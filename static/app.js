@@ -8,8 +8,44 @@
   const btnClearTape = document.getElementById('btnClearTape');
   const modelSelect = document.getElementById('modelSelect');
   const systemPromptInput = document.getElementById('systemPromptInput');
-  const carrierNotice = document.getElementById('carrierNotice');
+  const googleSearchConfigGroup = document.getElementById('googleSearchConfigGroup');
+  const googleSearchToggle = document.getElementById('googleSearchToggle');
+  const googleSearchStatusHint = document.getElementById('googleSearchStatusHint');
   const carrierTag = document.getElementById('carrierTag');
+
+  // Models supporting the native Google Search grounding tool
+  const GOOGLE_SEARCH_SUPPORTED_MODELS = new Set([
+    'gemini-3.8-live-preview',
+    'gemini-3.8-live',
+    'gemini-3.1-live',
+    'gemini-live-2.5-flash-native-audio',
+    'gemini-2.0-flash-live-preview-04-09',
+  ]);
+
+  function isModelSupportingGoogleSearch(modelName) {
+    return GOOGLE_SEARCH_SUPPORTED_MODELS.has(modelName || '');
+  }
+
+  function isGoogleSearchEnabled() {
+    const selectedModel = modelSelect ? modelSelect.value : 'gemini-3.8-live-preview';
+    if (!isModelSupportingGoogleSearch(selectedModel)) return false;
+    return googleSearchToggle ? Boolean(googleSearchToggle.checked) : true;
+  }
+
+  function updateGoogleSearchCapabilityUI() {
+    if (!googleSearchConfigGroup) return;
+    const selectedModel = modelSelect ? modelSelect.value : 'gemini-3.8-live-preview';
+    if (isModelSupportingGoogleSearch(selectedModel)) {
+      googleSearchConfigGroup.style.display = 'flex';
+      if (googleSearchStatusHint && googleSearchToggle) {
+        googleSearchStatusHint.textContent = googleSearchToggle.checked
+          ? 'Ancrage web temps réel actif (affiche le retour en gris dans la console)'
+          : 'Ancrage web Google Search désactivé pour cette session';
+      }
+    } else {
+      googleSearchConfigGroup.style.display = 'none';
+    }
+  }
 
   const statusLed = document.getElementById('statusLed');
   const statusText = document.getElementById('statusText');
@@ -46,6 +82,7 @@
   let turnCount = 0;
   let audioSendInFlight = false;
   let pendingPcmChunks = [];
+  let lastSearchSignature = '';
 
   // Audio Playback State (24kHz)
   let playbackCtx = null;
@@ -82,6 +119,7 @@
     }
   }
   checkSecureContext();
+  updateGoogleSearchCapabilityUI();
 
   function formatTime() {
     const now = new Date();
@@ -104,6 +142,70 @@
     div.className = 'tape-entry system-entry';
     div.textContent = `[${formatTime()}] // ${message}`;
     tapeContainer.appendChild(div);
+    tapeContainer.scrollTop = tapeContainer.scrollHeight;
+  }
+
+  function appendGoogleSearchResult(msg) {
+    if (!isGoogleSearchEnabled()) return;
+    const queries = Array.isArray(msg.queries) ? msg.queries : [];
+    const sources = Array.isArray(msg.sources) ? msg.sources : [];
+    const snippets = Array.isArray(msg.snippets) ? msg.snippets : [];
+    const sig = JSON.stringify({ queries, sources, snippets });
+    if (sig === lastSearchSignature) return;
+    lastSearchSignature = sig;
+
+    hideEmptyState();
+    const box = document.createElement('div');
+    box.className = 'tape-entry google-search-entry';
+
+    const header = document.createElement('div');
+    header.className = 'gs-header';
+    header.innerHTML = `<span>🔍 OUTIL GOOGLE SEARCH // RETOUR D'ANCRAGE WEB</span><span>${formatTime()}</span>`;
+    box.appendChild(header);
+
+    if (queries.length > 0) {
+      const qSec = document.createElement('div');
+      qSec.className = 'gs-section';
+      qSec.textContent = 'Requête(s) : ';
+      for (const q of queries) {
+        const pill = document.createElement('span');
+        pill.className = 'gs-query-pill';
+        pill.textContent = q;
+        qSec.appendChild(pill);
+      }
+      box.appendChild(qSec);
+    }
+
+    if (snippets.length > 0) {
+      const sSec = document.createElement('div');
+      sSec.className = 'gs-section';
+      sSec.textContent = `Retour Google Search : "${snippets.join(' — ')}"`;
+      box.appendChild(sSec);
+    }
+
+    if (sources.length > 0) {
+      const srcSec = document.createElement('div');
+      srcSec.className = 'gs-section';
+      srcSec.textContent = 'Source(s) : ';
+      for (const src of sources) {
+        if (src.uri) {
+          const a = document.createElement('a');
+          a.className = 'gs-source-link';
+          a.href = src.uri;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = `[${src.title || 'Web'}]`;
+          srcSec.appendChild(a);
+        } else {
+          const sp = document.createElement('span');
+          sp.textContent = `[${src.title || 'Web'}] `;
+          srcSec.appendChild(sp);
+        }
+      }
+      box.appendChild(srcSec);
+    }
+
+    tapeContainer.appendChild(box);
     tapeContainer.scrollTop = tapeContainer.scrollHeight;
   }
 
@@ -374,6 +476,8 @@
       updateOrCreateTranscriptEntry('user', msg.text, msg.finished);
     } else if (msg.type === 'transcript_out') {
       updateOrCreateTranscriptEntry('gemini', msg.text, msg.finished);
+    } else if (msg.type === 'google_search_result') {
+      appendGoogleSearchResult(msg);
     } else if (msg.type === 'interrupted') {
       stopAllPlayback();
       if (currentGeminiEntry) {
@@ -382,6 +486,7 @@
       }
       scopeModeLabel.textContent = '● INTERRUPTION DÉTECTÉE // À VOUS LA PAROLE';
     } else if (msg.type === 'turn_complete') {
+      lastSearchSignature = '';
       if (currentUserEntry) currentUserEntry = null;
       if (currentGeminiEntry) {
         currentGeminiEntry = null;
@@ -452,6 +557,7 @@
       const selectedRegion = regionSelect ? regionSelect.value : 'us-central1';
       const selectedModel = modelSelect ? modelSelect.value : 'gemini-3.8-live-preview';
       const selectedVoice = voiceSelect ? voiceSelect.value : 'Aoede';
+      const searchActive = isGoogleSearchEnabled();
 
       const resp = await fetch('/api/live/start', {
         method: 'POST',
@@ -463,6 +569,7 @@
           voice: selectedVoice,
           system_prompt: systemPromptInput.value.trim(),
           api_key: apiKeyEl ? apiKeyEl.value.trim() : '',
+          enable_google_search: searchActive,
         }),
       });
 
@@ -490,11 +597,13 @@
       const establishedRegion = msg.location || selectedRegion;
       const establishedModel = msg.active_model || selectedModel;
       const establishedVoice = msg.voice || selectedVoice;
+      const establishedSearch = msg.google_search_enabled !== undefined ? msg.google_search_enabled : searchActive;
       window.__establishedSession = {
         region: establishedRegion,
         model: establishedModel,
         voice: establishedVoice,
         project: msg.project,
+        googleSearch: establishedSearch,
       };
 
       const voiceHintEl = document.getElementById('systemPromptVoiceHint');
@@ -514,7 +623,7 @@
       }
 
       appendSystemLog(
-        `Session Live établie — Région : ${establishedRegion} | Modèle utilisé : ${establishedModel} | Voix utilisée : ${establishedVoice} [FR]`
+        `Session Live établie — Région : ${establishedRegion} | Modèle utilisé : ${establishedModel} | Voix utilisée : ${establishedVoice} [FR] | Google Search : ${establishedSearch ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`
       );
 
       await startMicrophoneCapture();
@@ -549,9 +658,11 @@
   }
 
   async function restartSessionForConfigChange(changeLabel) {
+    updateGoogleSearchCapabilityUI();
     const selectedRegion = regionSelect ? regionSelect.value : 'us-central1';
     const selectedModel = modelSelect ? modelSelect.value : 'gemini-3.8-live-preview';
     const selectedVoice = voiceSelect ? voiceSelect.value : 'Aoede';
+    const searchActive = isGoogleSearchEnabled();
 
     const voiceHintEl = document.getElementById('systemPromptVoiceHint');
     if (voiceHintEl) {
@@ -559,7 +670,7 @@
     }
 
     appendSystemLog(
-      `🔄 Modification (${changeLabel}) → Redémarrage de la session Live [Région : ${selectedRegion} | Modèle : ${selectedModel} | Voix : ${selectedVoice}]...`
+      `🔄 Modification (${changeLabel}) → Redémarrage de la session Live [Région : ${selectedRegion} | Modèle : ${selectedModel} | Voix : ${selectedVoice} | Google Search : ${searchActive ? 'ACTIVÉ' : 'DÉSACTIVÉ'}]...`
     );
     await stopSession();
     await startSession();
@@ -681,6 +792,7 @@
 
   if (modelSelect) {
     modelSelect.addEventListener('change', () => {
+      updateGoogleSearchCapabilityUI();
       restartSessionForConfigChange(`Modèle : ${modelSelect.value}`);
     });
   }
@@ -688,6 +800,15 @@
   if (voiceSelect) {
     voiceSelect.addEventListener('change', () => {
       restartSessionForConfigChange(`Voix : ${voiceSelect.value}`);
+    });
+  }
+
+  if (googleSearchToggle) {
+    googleSearchToggle.addEventListener('change', () => {
+      updateGoogleSearchCapabilityUI();
+      restartSessionForConfigChange(
+        `Outil Google Search : ${googleSearchToggle.checked ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`
+      );
     });
   }
 

@@ -178,6 +178,17 @@
               placeholder="Définissez le comportement et le ton de Gemini Live..."
             >Tu es un assistant vocal francophone intelligent, chaleureux et naturel. Réponds en français de manière claire, concise et conversationnelle, adaptée à un échange oral fluide en temps réel.</textarea>
           </div>
+
+          <!-- Outil Natif Google Search (affiché si supporté par le modèle) -->
+          <div class="config-group" id="googleSearchConfigGroup">
+            <label class="tool-checkbox-row" for="googleSearchToggle">
+              <input type="checkbox" id="googleSearchToggle" class="industrial-checkbox" checked />
+              <span class="tool-checkbox-text">
+                <span class="tool-checkbox-title">OUTIL NATIF : GOOGLE SEARCH</span>
+                <span class="tool-checkbox-sub" id="googleSearchStatusHint">Ancrage web temps réel actif (affiche le retour en gris dans la console)</span>
+              </span>
+            </label>
+          </div>
         </aside>
 
         <!-- RIGHT PANEL: MODULE B - TRANSCRIPTION TAPE -->
@@ -215,6 +226,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=6.0"></script>
+  <script src="/static/app.js?v=7.0"></script>
 </body>
 </html>

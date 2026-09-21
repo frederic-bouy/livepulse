@@ -747,3 +747,103 @@ html, body {
   font-weight: 700;
   text-transform: uppercase;
 }
+
+/* Native Google Search Tool Checkbox Row */
+.tool-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background-color: var(--chassis-ivory);
+  border: 1px solid var(--chassis-border-dark);
+  border-radius: 7px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.tool-checkbox-row:hover {
+  border-color: var(--accent-orange);
+  background-color: #FAF8F3;
+}
+
+.industrial-checkbox {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: var(--accent-orange);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tool-checkbox-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tool-checkbox-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-primary);
+}
+
+.tool-checkbox-sub {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-muted);
+  line-height: 1.35;
+}
+
+/* Gray Console Entry for Native Google Search Tool Output */
+.tape-entry.google-search-entry {
+  background-color: rgba(125, 121, 112, 0.11);
+  border: 1px solid rgba(125, 121, 112, 0.35);
+  border-left: 3px solid #7D7970;
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: #6E6A62;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.google-search-entry .gs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.69rem;
+  letter-spacing: 0.04em;
+  color: #635F57;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.google-search-entry .gs-section {
+  margin-top: 4px;
+  color: #6E6A62;
+}
+
+.google-search-entry .gs-query-pill {
+  display: inline-block;
+  background-color: rgba(110, 106, 98, 0.14);
+  border: 1px solid rgba(110, 106, 98, 0.28);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 5px;
+  color: #5C5851;
+  font-weight: 600;
+}
+
+.google-search-entry .gs-source-link {
+  color: #635F57;
+  text-decoration: underline;
+  margin-right: 8px;
+}
+
+.google-search-entry .gs-source-link:hover {
+  color: var(--ink-primary);
+}

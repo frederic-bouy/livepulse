@@ -44,6 +44,7 @@ def test_ui_branding_and_selectors():
     assert "gemini-3.8-live-preview" in html
     assert "gemini-3.8-live" in html
     assert "gemini-3.1-live" in html
+    assert 'id="googleSearchToggle"' in html
     # Verify carrierNotice banner was removed
     assert 'id="carrierNotice"' not in html
 
@@ -70,13 +71,14 @@ def test_live_session_lifecycle_mocked():
     import asyncio
 
     class DummyBridge:
-        def __init__(self, session_id, project, location, requested_model, voice_name, system_prompt, api_key=None):
+        def __init__(self, session_id, project, location, requested_model, voice_name, system_prompt, api_key=None, enable_google_search=True):
             self.session_id = session_id
             self.project = project
             self.location = location
             self.requested_model = requested_model
             self.active_model = requested_model
             self.voice_name = voice_name
+            self.enable_google_search = enable_google_search
             self.fallback_used = False
             self.fallback_reason = None
             self.startup_error = None
@@ -111,6 +113,7 @@ def test_live_session_lifecycle_mocked():
                 "model": "gemini-3.8-live-preview",
                 "voice": "Aoede",
                 "system_prompt": "Test system prompt",
+                "enable_google_search": True,
             },
         )
         assert start_resp.status_code == 200
@@ -119,6 +122,7 @@ def test_live_session_lifecycle_mocked():
         assert start_data["location"] == "europe-west4"
         assert start_data["active_model"] == "gemini-3.8-live-preview"
         assert start_data["voice"] == "Aoede"
+        assert start_data["google_search_enabled"] is True
         sid = start_data["session_id"]
 
         poll_resp = client.post("/api/live/poll", json={"session_id": sid})

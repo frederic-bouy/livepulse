@@ -94,8 +94,13 @@ async def health_check():
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
-def build_live_config(system_prompt: str, voice_name: str = DEFAULT_VOICE) -> types.LiveConnectConfig:
+def build_live_config(
+    system_prompt: str,
+    voice_name: str = DEFAULT_VOICE,
+    enable_google_search: bool = True,
+) -> types.LiveConnectConfig:
     prompt_text = (system_prompt or DEFAULT_SYSTEM_PROMPT).strip()
+    tools_list = [types.Tool(google_search=types.GoogleSearch())] if enable_google_search else None
     return types.LiveConnectConfig(
         response_modalities=["AUDIO"],
         speech_config=types.SpeechConfig(
@@ -104,6 +109,7 @@ def build_live_config(system_prompt: str, voice_name: str = DEFAULT_VOICE) -> ty
             ),
             language_code="fr-FR",
         ),
+        tools=tools_list,
         system_instruction=types.Content(
             parts=[types.Part.from_text(text=prompt_text)]
         ),
@@ -124,6 +130,7 @@ class LiveSessionBridge:
         voice_name: str,
         system_prompt: str,
         api_key: Optional[str] = None,
+        enable_google_search: bool = True,
     ):
         self.session_id = session_id
         self.project = project
@@ -135,12 +142,17 @@ class LiveSessionBridge:
         self.voice_name = voice_name
         self.system_prompt = system_prompt
         self.api_key = (api_key or os.environ.get("GEMINI_API_KEY") or "").strip() or None
+        self.enable_google_search = bool(enable_google_search)
 
         if self.api_key:
             self.client = genai.Client(api_key=self.api_key, vertexai=False)
         else:
             self.client = genai.Client(vertexai=True, project=project, location=location)
-        self.live_config = build_live_config(system_prompt=system_prompt, voice_name=voice_name)
+        self.live_config = build_live_config(
+            system_prompt=system_prompt,
+            voice_name=voice_name,
+            enable_google_search=self.enable_google_search,
+        )
 
         self.event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
         self.input_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
@@ -315,6 +327,36 @@ class LiveSessionBridge:
                                     }
                                 )
 
+                            gm = getattr(sc, "grounding_metadata", None)
+                            if gm and self.enable_google_search:
+                                queries = list(getattr(gm, "web_search_queries", None) or [])
+                                sources = []
+                                for chunk in getattr(gm, "grounding_chunks", None) or []:
+                                    web_info = getattr(chunk, "web", None)
+                                    if web_info:
+                                        sources.append(
+                                            {
+                                                "title": getattr(web_info, "title", None) or "Source Web",
+                                                "uri": getattr(web_info, "uri", None) or "",
+                                            }
+                                        )
+                                snippets = []
+                                for sup in getattr(gm, "grounding_supports", None) or []:
+                                    seg = getattr(sup, "segment", None)
+                                    seg_text = getattr(seg, "text", None) if seg else None
+                                    if seg_text:
+                                        snippets.append(seg_text)
+
+                                if queries or sources or snippets:
+                                    await self.event_queue.put(
+                                        {
+                                            "type": "google_search_result",
+                                            "queries": queries,
+                                            "sources": sources,
+                                            "snippets": snippets,
+                                        }
+                                    )
+
                             if getattr(sc, "turn_complete", False):
                                 await self.event_queue.put({"type": "turn_complete"})
                 except asyncio.CancelledError:
@@ -435,6 +477,7 @@ async def start_http_live_session(request: Request):
     voice_name = body.get("voice") or DEFAULT_VOICE
     system_prompt = body.get("system_prompt") or DEFAULT_SYSTEM_PROMPT
     api_key = (body.get("api_key") or "").strip() or None
+    enable_google_search = body.get("enable_google_search", True)
 
     session_id = uuid.uuid4().hex[:12]
     bridge = LiveSessionBridge(
@@ -445,6 +488,7 @@ async def start_http_live_session(request: Request):
         voice_name=voice_name,
         system_prompt=system_prompt,
         api_key=api_key,
+        enable_google_search=bool(enable_google_search),
     )
     ACTIVE_SESSIONS[session_id] = bridge
     bridge.start()
@@ -476,6 +520,7 @@ async def start_http_live_session(request: Request):
             "fallback_used": bridge.fallback_used,
             "fallback_reason": bridge.fallback_reason,
             "voice": bridge.voice_name,
+            "google_search_enabled": bridge.enable_google_search,
             "sample_rate_in": 16000,
             "sample_rate_out": 24000,
         }
