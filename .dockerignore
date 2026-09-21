@@ -1,0 +1,16 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+*.log
+*.pem
+cert.pem
+key.pem
+.git/
+.github/
+tests/
+*.md

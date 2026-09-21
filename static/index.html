@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LivePulse — Vertex AI Gemini Live Console</title>
+  <meta name="description" content="Démonstrateur vocal bidirectionnel temps réel Gemini Live sur Google Cloud Vertex AI — Design industriel Braun / Teenage Engineering." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=1.2" />
+</head>
+<body>
+  <main class="app-wrapper">
+    <section class="hardware-chassis" aria-label="Console Vocale Gemini Live LivePulse">
+      <!-- Machined Corner Screws -->
+      <div class="screw tl" aria-hidden="true"></div>
+      <div class="screw tr" aria-hidden="true"></div>
+      <div class="screw bl" aria-hidden="true"></div>
+      <div class="screw br" aria-hidden="true"></div>
+
+      <!-- Top Chassis Header -->
+      <header class="chassis-header">
+        <div class="brand-cluster">
+          <div class="brand-mark">
+            <span class="brand-dot" aria-hidden="true"></span>
+            <h1 class="brand-title">LIVEPULSE</h1>
+          </div>
+        </div>
+
+        <div class="telemetry-strip">
+          <div class="spec-badge" id="badgeStatus">
+            <span class="led-indicator" id="statusLed"></span>
+            <span class="label">STATE</span>
+            <span class="value" id="statusText">VEILLE</span>
+          </div>
+          <div class="spec-badge">
+            <span class="label">GCP</span>
+            <span class="value" id="badgeProject">VERTEX-AI</span>
+          </div>
+          <div class="spec-badge interactive-badge">
+            <label class="label" for="regionSelect">REGION</label>
+            <select id="regionSelect" class="badge-select" title="Sélectionner la région Vertex AI">
+              <option value="us-central1" selected>us-central1</option>
+              <option value="europe-west4">europe-west4</option>
+              <option value="asia-northeast1">asia-northeast1</option>
+            </select>
+          </div>
+          <div class="spec-badge interactive-badge">
+            <label class="label" for="modelSelect">MODEL</label>
+            <select id="modelSelect" class="badge-select" title="Sélectionner le modèle Gemini Live">
+              <option value="gemini-3.8-live-preview" selected>gemini-3.8-live-preview</option>
+              <option value="gemini-3.8-live">gemini-3.8-live</option>
+              <option value="gemini-3.8-live-extended-thinking-preview">gemini-3.8-live-thinking</option>
+              <option value="gemini-3.1-live">gemini-3.1-live</option>
+              <option value="gemini-live-2.5-flash-native-audio">gemini-2.5-flash-live</option>
+            </select>
+          </div>
+          <div class="spec-badge interactive-badge">
+            <label class="label" for="voiceSelect">VOICE</label>
+            <select id="voiceSelect" class="badge-select" title="Sélectionner la voix Gemini Live">
+              <option value="Aoede" selected>AOEDE [FR]</option>
+              <option value="Puck">PUCK [FR]</option>
+              <option value="Kore">KORE [FR]</option>
+              <option value="Charon">CHARON [FR]</option>
+              <option value="Fenrir">FENRIR [FR]</option>
+              <option value="Leda">LEDA [FR]</option>
+              <option value="Orus">ORUS [FR]</option>
+              <option value="Zephyr">ZEPHYR [FR]</option>
+            </select>
+          </div>
+          <div class="spec-badge">
+            <span class="label">RTT</span>
+            <span class="value" id="badgeLatency">-- ms</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Cloudtop HTTPS / Microphone Helper Banner -->
+      <div class="secure-context-banner hidden" id="secureContextBanner">
+        <div>
+          <strong>Note Microphone (Cloudtop HTTP) :</strong> Pour capturer le micro de votre poste sur une URL non-localhost, ouvrez le port HTTPS sécurisé ou autorisez l'origine dans Chrome.
+        </div>
+        <div class="banner-actions">
+          <a class="mini-btn" id="httpsSwitchLink" href="#" target="_blank" rel="noopener">Ouvrir en HTTPS (:8766)</a>
+          <button class="mini-btn" id="copyChromeFlagBtn" type="button">Copier Flag Chrome</button>
+        </div>
+      </div>
+
+      <!-- Main Split Console Body -->
+      <div class="console-body">
+        <!-- LEFT PANEL: MODULE A - AVATAR VOCAL INTERACTIF -->
+        <aside class="module-acoustic" aria-label="Module Avatar Vocal et Contrôles">
+          <div class="module-header">
+            <span class="module-code">MOD. A // AVATAR VOCAL INTERACTIF</span>
+            <span class="module-status-tag" id="carrierTag">PERSONA // AOEDE</span>
+          </div>
+
+          <!-- Interactive Avatar & VU Telemetry Screen -->
+          <div class="oscilloscope-frame">
+            <div class="scope-top-hud">
+              <span class="scope-state-pill" id="scopeModeLabel">● STANDBY // PRÊT À CONNECTER</span>
+              <span id="scopeClock">00:00.0</span>
+            </div>
+
+            <div class="scope-canvas-wrap">
+              <canvas id="scopeCanvas" width="430" height="236"></canvas>
+            </div>
+
+            <!-- Dual Channel VU Meters -->
+            <div class="vu-meters-grid">
+              <div class="vu-channel">
+                <div class="vu-label-row">
+                  <span>CH1 IN // MICRO 16kHz</span>
+                  <span id="vuInDb">-60 dB</span>
+                </div>
+                <div class="vu-bar-track">
+                  <div class="vu-bar-fill in-fill" id="vuInBar"></div>
+                </div>
+              </div>
+              <div class="vu-channel">
+                <div class="vu-label-row">
+                  <span>CH2 OUT // GEMINI 24kHz</span>
+                  <span id="vuOutDb">-60 dB</span>
+                </div>
+                <div class="vu-bar-track">
+                  <div class="vu-bar-fill out-fill" id="vuOutBar"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Primary Tactile Switches -->
+          <div class="tactile-deck">
+            <button type="button" class="mech-btn primary-orange" id="btnToggleSession">
+              <span id="btnSessionIcon">●</span>
+              <span id="btnSessionLabel">DÉMARRER SESSION LIVE</span>
+            </button>
+            <button type="button" class="mech-btn neutral-key" id="btnToggleMute" disabled>
+              <span id="btnMuteLabel">MICRO : ACTIF</span>
+            </button>
+          </div>
+
+          <!-- Secondary Utility Switches -->
+          <div class="utility-row">
+            <button type="button" class="mech-btn neutral-key compact-key" id="btnTestGreeting">
+              ▶ SIGNAL TEST ("BONJOUR")
+            </button>
+            <button type="button" class="mech-btn neutral-key compact-key" id="btnClearTape">
+              ✕ EFFACER RUBAN
+            </button>
+          </div>
+
+          <div class="config-group">
+            <div class="config-label-row">
+              <label class="config-label" for="apiKeyInput">CLÉ API AI STUDIO (OPTIONNEL — FORCE 3.8-LIVE)</label>
+              <span class="config-hint">Sinon : Vertex AI ADC</span>
+            </div>
+            <input
+              type="password"
+              id="apiKeyInput"
+              class="industrial-select"
+              placeholder="Laisser vide (Vertex AI ADC) ou coller GEMINI_API_KEY..."
+              autocomplete="off"
+            />
+          </div>
+
+          <!-- System Prompt (Instructions Système) -->
+          <div class="config-group">
+            <div class="config-label-row">
+              <label class="config-label" for="systemPromptInput">INSTRUCTIONS SYSTÈME (SYSTEM PROMPT)</label>
+              <span class="config-hint" id="systemPromptVoiceHint">Voix : Aoede (FR)</span>
+            </div>
+            <textarea
+              id="systemPromptInput"
+              class="industrial-textarea"
+              rows="4"
+              placeholder="Définissez le comportement et le ton de Gemini Live..."
+            >Tu es un assistant vocal francophone intelligent, chaleureux et naturel. Réponds en français de manière claire, concise et conversationnelle, adaptée à un échange oral fluide en temps réel.</textarea>
+          </div>
+        </aside>
+
+        <!-- RIGHT PANEL: MODULE B - TRANSCRIPTION TAPE -->
+        <section class="module-tape" aria-label="Ruban de Transcription en Direct">
+          <div class="module-header">
+            <span class="module-code">MOD. B // RUBAN DE TRANSCRIPTION TEMPS RÉEL</span>
+            <span class="module-status-tag" id="turnCounterTag">00 TOURS ENREGISTRÉS</span>
+          </div>
+
+          <div class="tape-container" id="tapeContainer" role="log" aria-live="polite">
+            <div class="tape-empty-state" id="tapeEmptyState">
+              <div class="empty-icon-ring">REC</div>
+              <h2>Console Prête pour l'Échange Vocal</h2>
+              <p>
+                Appuyez sur <strong>DÉMARRER SESSION LIVE</strong> pour ouvrir le canal bidirectionnel Vertex AI et parler directement en français avec Gemini, ou utilisez <strong>SIGNAL TEST</strong>.
+              </p>
+            </div>
+          </div>
+
+          <!-- Hybrid Text + Voice Input -->
+          <form class="hybrid-composer" id="textComposerForm">
+            <input
+              type="text"
+              id="textComposerInput"
+              class="composer-input"
+              placeholder="Parlez au micro ou saisissez un message ici (Gemini répondra à voix haute)..."
+              autocomplete="off"
+            />
+            <button type="submit" class="mech-btn primary-orange composer-send-btn" id="btnSendText">
+              TRANSMETTRE ↵
+            </button>
+          </form>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js?v=6.0"></script>
+</body>
+</html>

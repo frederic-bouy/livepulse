@@ -1,0 +1,749 @@
+:root {
+  /* Braun / Teenage Engineering Industrial Palette */
+  --bg-environment: #E5E0D5;
+  --chassis-ivory: #F4F1EA;
+  --chassis-panel: #EBE6DC;
+  --chassis-well: #E0DAD0;
+  --chassis-border: #C8C2B6;
+  --chassis-border-dark: #A69F91;
+
+  --ink-primary: #1A1917;
+  --ink-secondary: #524E48;
+  --ink-muted: #857F75;
+
+  --accent-orange: #FF521B;
+  --accent-orange-dark: #D43B0A;
+  --accent-sage: #2E6F40;
+  --accent-sage-bright: #419E5B;
+  --accent-amber: #D98218;
+
+  --screen-bg: #161614;
+  --screen-grid: rgba(244, 241, 234, 0.07);
+  --screen-text: #F2EFE9;
+
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --shadow-chassis: 
+    0 24px 60px rgba(26, 25, 23, 0.14),
+    0 4px 12px rgba(26, 25, 23, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --shadow-key: 
+    0 3px 0 #ABA496,
+    0 4px 8px rgba(26, 25, 23, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-key-active: 
+    0 0px 0 #ABA496,
+    0 1px 2px rgba(26, 25, 23, 0.2),
+    inset 0 1px 3px rgba(0, 0, 0, 0.15);
+  --shadow-orange-key: 
+    0 3px 0 #B33006,
+    0 5px 12px rgba(255, 82, 27, 0.28),
+    inset 0 1px 0 rgba(255, 190, 170, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  background-color: var(--bg-environment);
+  background-image: radial-gradient(circle at 50% 20%, #EFECE4 0%, #DFD9CC 100%);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.app-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 24px;
+}
+
+/* Main Braun / TE Hardware Chassis */
+.hardware-chassis {
+  width: 100%;
+  max-width: 1380px;
+  min-height: calc(100vh - 44px);
+  max-height: 920px;
+  background-color: var(--chassis-ivory);
+  border: 1px solid var(--chassis-border-dark);
+  border-radius: 18px;
+  box-shadow: var(--shadow-chassis);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Machined Corner Screws */
+.screw {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #D5CFC2, #B8B1A3);
+  border: 1px solid #968F82;
+  position: absolute;
+  z-index: 10;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+.screw::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 1px;
+  right: 1px;
+  height: 1px;
+  background: #7A7468;
+  transform: rotate(-35deg);
+}
+.screw.tl { top: 12px; left: 12px; }
+.screw.tr { top: 12px; right: 12px; }
+.screw.bl { bottom: 12px; left: 12px; }
+.screw.br { bottom: 12px; right: 12px; }
+
+/* Top Industrial Header Bar */
+.chassis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 34px;
+  background-color: var(--chassis-panel);
+  border-bottom: 1px solid var(--chassis-border);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.brand-cluster {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--accent-orange);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+}
+
+.brand-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-primary);
+}
+
+.brand-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-secondary);
+  background: var(--chassis-well);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--chassis-border);
+  letter-spacing: 0.03em;
+}
+
+.telemetry-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.spec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 5px 10px;
+  background-color: var(--chassis-ivory);
+  border: 1px solid var(--chassis-border);
+  border-radius: 5px;
+  color: var(--ink-primary);
+}
+
+.spec-badge .label {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.spec-badge .value {
+  font-weight: 600;
+}
+
+.spec-badge.interactive-badge {
+  padding: 3px 8px 3px 10px;
+  border-color: var(--chassis-border-dark);
+  background-color: #FAF8F2;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.spec-badge.interactive-badge:hover,
+.spec-badge.interactive-badge:focus-within {
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 2px rgba(255, 82, 27, 0.14);
+}
+
+.badge-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: transparent;
+  background-image: linear-gradient(45deg, transparent 50%, var(--accent-orange) 50%),
+                    linear-gradient(135deg, var(--accent-orange) 50%, transparent 50%);
+  background-position: calc(100% - 9px) center, calc(100% - 4px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  border: none;
+  padding: 2px 18px 2px 4px;
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  cursor: pointer;
+  outline: none;
+}
+
+.led-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #9E988E;
+  transition: all 0.2s ease;
+}
+
+.led-indicator.online {
+  background-color: var(--accent-sage-bright);
+  box-shadow: 0 0 8px rgba(65, 158, 91, 0.7);
+}
+
+.led-indicator.speaking {
+  background-color: var(--accent-orange);
+  box-shadow: 0 0 10px rgba(255, 82, 27, 0.8);
+}
+
+/* Secure Context Alert Bar (if HTTP on remote Cloudtop) */
+.secure-context-banner {
+  background-color: #FFF6EE;
+  border-bottom: 1px solid #F3C6A8;
+  padding: 8px 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #6B2A0E;
+  gap: 12px;
+}
+
+.secure-context-banner.hidden {
+  display: none;
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-btn {
+  font-family: var(--font-mono);
+  font-size: 0.71rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #D97E54;
+  background: #FFFFFF;
+  color: #8C2D09;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.mini-btn:hover {
+  background: #FFE8D9;
+}
+
+/* Dual-Module Grid Layout */
+.console-body {
+  display: grid;
+  grid-template-columns: 490px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 1040px) {
+  .console-body {
+    grid-template-columns: 1fr;
+  }
+  .hardware-chassis {
+    max-height: none;
+  }
+}
+
+/* LEFT PANEL: ACOUSTIC HARDWARE MODULE */
+.module-acoustic {
+  background-color: var(--chassis-panel);
+  border-right: 1px solid var(--chassis-border);
+  padding: 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.module-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--chassis-border);
+  padding-bottom: 8px;
+}
+
+.module-code {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+.module-status-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background-color: var(--chassis-well);
+  color: var(--ink-secondary);
+}
+
+/* Field Recorder Display + Oscilloscope */
+.oscilloscope-frame {
+  background-color: var(--screen-bg);
+  border: 2px solid #302E2A;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: inset 0 4px 14px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scope-top-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #A8A39A;
+}
+
+.scope-state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--screen-text);
+  font-weight: 600;
+}
+
+.scope-canvas-wrap {
+  position: relative;
+  height: 236px;
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  background-image: 
+    linear-gradient(to right, var(--screen-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--screen-grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+#scopeCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* VU Meters Strip */
+.vu-meters-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vu-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vu-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: #9E9A90;
+}
+
+.vu-bar-track {
+  height: 7px;
+  background: #282724;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.vu-bar-fill {
+  height: 100%;
+  width: 2%;
+  border-radius: 3px;
+  transition: width 0.06s linear;
+}
+
+.vu-bar-fill.in-fill {
+  background: linear-gradient(90deg, #2E6F40 0%, #48B866 80%, #F5B041 100%);
+}
+
+.vu-bar-fill.out-fill {
+  background: linear-gradient(90deg, #FF521B 0%, #FF784E 80%, #FFD166 100%);
+}
+
+/* Tactile Control Keys */
+.tactile-deck {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 12px;
+}
+
+.mech-btn {
+  appearance: none;
+  border: 1px solid #999284;
+  border-radius: 9px;
+  padding: 13px 14px;
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+  user-select: none;
+}
+
+.mech-btn:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+.mech-btn:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.mech-btn.primary-orange {
+  background-color: var(--accent-orange);
+  color: #FFFFFF;
+  border-color: #BA3409;
+  box-shadow: var(--shadow-orange-key);
+}
+
+.mech-btn.primary-orange:hover:not(:disabled) {
+  background-color: #FF6130;
+}
+
+.mech-btn.primary-orange.active-session {
+  background-color: #23221F;
+  border-color: #11110F;
+  box-shadow: 0 3px 0 #000000, 0 4px 10px rgba(0,0,0,0.25);
+  color: #FF6B3D;
+}
+
+.mech-btn.neutral-key {
+  background-color: var(--chassis-ivory);
+  color: var(--ink-primary);
+  box-shadow: var(--shadow-key);
+}
+
+.mech-btn.neutral-key:hover:not(:disabled) {
+  background-color: #FAF8F3;
+}
+
+.mech-btn.neutral-key.muted {
+  background-color: #FDECE6;
+  border-color: var(--accent-orange);
+  color: var(--accent-orange-dark);
+}
+
+/* Quick Signal & Model Selector Row */
+.utility-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mech-btn.compact-key {
+  padding: 9px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* Hardware Configuration Controls */
+.config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.config-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-secondary);
+}
+
+.config-hint {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--ink-muted);
+}
+
+.industrial-select,
+.industrial-textarea {
+  width: 100%;
+  background-color: var(--chassis-ivory);
+  border: 1px solid var(--chassis-border-dark);
+  border-radius: 7px;
+  padding: 9px 11px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--ink-primary);
+  box-shadow: inset 0 1px 2px rgba(26, 25, 23, 0.06);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.industrial-select:focus,
+.industrial-textarea:focus {
+  border-color: var(--accent-orange);
+}
+
+.industrial-textarea {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 82px;
+}
+
+.carrier-notice {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.4;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background-color: var(--chassis-well);
+  border-left: 3px solid var(--accent-sage);
+  color: var(--ink-secondary);
+}
+
+/* RIGHT PANEL: TRANSCRIPTION TAPE & HYBRID INPUT */
+.module-tape {
+  background-color: var(--chassis-ivory);
+  padding: 22px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.tape-container {
+  flex: 1;
+  background-color: #FAF8F2;
+  border: 1px solid var(--chassis-border);
+  border-radius: 10px;
+  box-shadow: inset 0 2px 6px rgba(26, 25, 23, 0.04);
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  background-image: linear-gradient(to bottom, transparent 31px, rgba(200, 194, 182, 0.24) 32px);
+  background-size: 100% 32px;
+}
+
+.tape-empty-state {
+  margin: auto;
+  text-align: center;
+  max-width: 420px;
+  padding: 28px;
+  color: var(--ink-secondary);
+}
+
+.empty-icon-ring {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--chassis-border-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-orange);
+}
+
+.tape-empty-state h2 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--ink-primary);
+}
+
+.tape-empty-state p {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+}
+
+/* Transcript Turn Cards */
+.tape-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  background-color: rgba(244, 241, 234, 0.92);
+  border: 1px solid var(--chassis-border);
+  animation: fadeInEntry 0.18s ease-out;
+}
+
+@keyframes fadeInEntry {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tape-entry.user-entry {
+  border-left: 4px solid var(--accent-sage);
+  align-self: flex-end;
+  width: 88%;
+  background-color: #F2F5F1;
+}
+
+.tape-entry.gemini-entry {
+  border-left: 4px solid var(--accent-orange);
+  align-self: flex-start;
+  width: 92%;
+  background-color: #FFFFFF;
+}
+
+.tape-entry.system-entry {
+  border-left: 3px solid var(--ink-muted);
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  color: var(--ink-secondary);
+  background-color: var(--chassis-panel);
+  padding: 8px 12px;
+}
+
+.entry-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.speaker-tag {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.user-entry .speaker-tag {
+  color: var(--accent-sage);
+}
+
+.gemini-entry .speaker-tag {
+  color: var(--accent-orange);
+}
+
+.entry-time {
+  color: var(--ink-muted);
+}
+
+.entry-text {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ink-primary);
+  white-space: pre-wrap;
+}
+
+/* Hybrid Text Input Bar */
+.hybrid-composer {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background-color: var(--chassis-panel);
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--chassis-border);
+}
+
+.composer-input {
+  flex: 1;
+  background: var(--chassis-ivory);
+  border: 1px solid var(--chassis-border-dark);
+  border-radius: 6px;
+  padding: 10px 13px;
+  font-family: var(--font-sans);
+  font-size: 0.86rem;
+  color: var(--ink-primary);
+  outline: none;
+}
+
+.composer-input:focus {
+  border-color: var(--accent-orange);
+}
+
+.composer-send-btn {
+  padding: 10px 18px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}

@@ -1,0 +1,106 @@
+name: LivePulse CI/CD — Tests, Security & Cloud Run
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  SERVICE_NAME: "livepulse"
+  GAR_REPOSITORY: "livepulse-repo"
+
+jobs:
+  # =========================================================================
+  # JOB 1 : Tests Fonctionnels (Pytest) & Analyse de Sécurité (Bandit + CVE)
+  # =========================================================================
+  test-and-security:
+    name: "1. Functional Tests & Security Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Application & Security Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run Functional & UI Tests (Pytest)
+        run: |
+          python -m pytest tests/ -v
+
+      - name: Run Static Application Security Testing (Bandit)
+        run: |
+          bandit -r app.py -ll -ii
+
+      - name: Run Dependency Vulnerability Scan (pip-audit OSV)
+        run: |
+          pip-audit -r requirements.txt --vulnerability-service osv
+
+  # =========================================================================
+  # JOB 2 : Build Container & Deploy to Cloud Run (Secrets-driven, Zero Hardcoded IDs)
+  # =========================================================================
+  deploy-cloudrun:
+    name: "2. Build & Deploy to Cloud Run"
+    needs: test-and-security
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud via Workload Identity Federation (Keyless)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOYER_SA }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker "${{ secrets.GCP_REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build and Push Container Image
+        run: |
+          IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          LATEST_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:latest"
+          docker build -t "${IMAGE_URI}" -t "${LATEST_URI}" .
+          docker push "${IMAGE_URI}"
+          docker push "${LATEST_URI}"
+
+      - name: Deploy Container to Cloud Run
+        run: |
+          IMAGE_URI="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
+            --region="${{ secrets.GCP_REGION }}" \
+            --image="${IMAGE_URI}" \
+            --service-account="${{ secrets.GCP_RUNTIME_SA }}" \
+            --no-invoker-iam-check \
+            --port=8080 \
+            --cpu=2 \
+            --memory=1Gi \
+            --min-instances=0 \
+            --max-instances=5 \
+            --timeout=3600 \
+            --session-affinity \
+            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }},GOOGLE_CLOUD_LOCATION=us-central1,GEMINI_LIVE_MODEL=gemini-3.8-live-preview"
+
+      - name: Verify Live Cloud Run Health Check
+        run: |
+          SERVICE_URL=$(gcloud run services describe "${{ env.SERVICE_NAME }}" --project="${{ secrets.GCP_PROJECT_ID }}" --region="${{ secrets.GCP_REGION }}" --format="value(status.url)")
+          curl --fail --silent --show-error "${SERVICE_URL}/api/health" | grep '"status":"ok"'

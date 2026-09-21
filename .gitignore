@@ -1,0 +1,14 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.log
+*.pem
+cert.pem
+key.pem
+.env
+.DS_Store
+*.md
+!README.md
