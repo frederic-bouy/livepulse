@@ -42,6 +42,63 @@
 
 ---
 
+## ⚙️ Fonctionnement Détaillé du Workflow GitHub Actions (`ci-cd-cloudrun.yml`)
+
+Le pipeline CI/CD défini dans [`.github/workflows/ci-cd-cloudrun.yml`](.github/workflows/ci-cd-cloudrun.yml) automatise la validation qualité/sécurité et la mise en production sur **Google Cloud Run**.
+
+### 1. Schéma d'Exécution du Pipeline
+
+```mermaid
+flowchart LR
+    A["Push / PR sur main\nou déclenchement manuel"] --> B["Job 1 : test-and-security"]
+    subgraph CI ["Intégration Continue (Validation Qualité & Sécurité)"]
+        B --> B1["Pytest\n(Tests fonctionnels & UI)"]
+        B1 --> B2["Bandit SAST\n(Audit sécurité code Python)"]
+        B2 --> B3["Pip-Audit OSV\n(Scan CVE dépendances)"]
+    end
+    B3 -->|Succès + Branche main| C["Job 2 : deploy-cloudrun"]
+    subgraph CD ["Déploiement Continu (Google Cloud Run)"]
+        C --> C1["Auth OIDC sans clé\n(Workload Identity Federation)"]
+        C1 --> C2["Docker Build & Push\n(Artifact Registry)"]
+        C2 --> C3["Déploiement Cloud Run\n(Service Account Runtime)"]
+        C3 --> C4["Smoke Test HTTP\n(GET /api/health == ok)"]
+    end
+```
+
+### 2. Déclencheurs (`on:`)
+* **`push` sur la branche `main`** : Exécute l'intégralité du pipeline (**Job 1** puis **Job 2**).
+* **`pull_request` vers `main`** : Exécute uniquement le **Job 1 (`test-and-security`)** pour valider le code avant fusion, sans déployer en production.
+* **`workflow_dispatch`** : Permet de relancer manuellement le pipeline depuis l'onglet **Actions** de GitHub.
+
+### 3. Étape par Étape : Les 2 Jobs du Workflow
+
+#### 🧪 Job 1 : `1. Functional Tests & Security Audit` (`test-and-security`)
+Ce premier job agit comme un **garde-fou bloquant** (*Quality & Security Gate*). Si l'une des 3 vérifications échoue, le pipeline s'arrête immédiatement et le déploiement Cloud Run est annulé :
+1. **Tests Fonctionnels & UI (`python -m pytest tests/ -v`)** :
+   * Vérifie que l'endpoint de santé `GET /api/health` répond `200 OK`.
+   * Vérifie la présence des en-têtes HTTP de sécurité (`X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`) et des règles anti-cache (`Cache-Control: no-store`).
+   * Vérifie l'intégrité de l'interface HTML (`LIVEPULSE`, sélecteurs `REGION`, `MODEL`, `VOICE`) et la disponibilité des 6 images clés de l'avatar 60 FPS.
+   * Simule un cycle complet de session vocale (`/api/live/start` → `/api/live/poll` → `/api/live/send` → `/api/live/stop`).
+2. **Analyse Statique de Sécurité du Code (`bandit -r app.py -ll -ii`)** :
+   * Analyse l'arbre syntaxique (AST) de `app.py` pour détecter toute faille de sécurité potentielle (injections, exécution de commandes, secrets en dur, configurations TLS/WebSocket risquées) de sévérité moyenne ou haute.
+3. **Audit des Vulnérabilités de Dépendances (`pip-audit -r requirements.txt --vulnerability-service osv`)** :
+   * Interroge la base de données publique **Google OSV (Open Source Vulnerabilities)** pour vérifier qu'aucune bibliothèque listée dans `requirements.txt` (`fastapi`, `uvicorn`, `google-genai`, `pydantic`, `websockets`) ne comporte de faille CVE connue.
+
+#### 🚀 Job 2 : `2. Build & Deploy to Cloud Run` (`deploy-cloudrun`)
+Ce second job ne démarre que si **`needs: test-and-security`** est réussi **et** que l'exécution a lieu sur la branche `refs/heads/main` :
+1. **Authentification OIDC Sans Clé (`google-github-actions/auth@v2`)** :
+   * GitHub Actions génère un jeton OIDC éphémère (`id-token: write`) signé pour le dépôt et la branche `main`.
+   * Google Cloud **Workload Identity Federation** (`secrets.GCP_WIF_PROVIDER`) vérifie la condition `assertion.repository == 'frederic-bouy/livepulse' && assertion.ref == 'refs/heads/main'` et accorde un jeton d'accès temporaire au compte de service déployeur (`secrets.GCP_DEPLOYER_SA`).
+2. **Construction & Publication du Conteneur (`Docker Build & Push`)** :
+   * Construit l'image Docker multi-couches ([`Dockerfile`](Dockerfile)) exécutée sous l'utilisateur non-root `appuser`.
+   * Tagge l'image avec l'empreinte exacte du commit (`:${{ github.sha }}`) ainsi que `:latest`, puis la pousse dans Google Artifact Registry (`${{ secrets.GCP_REGION }}-docker.pkg.dev/.../livepulse-repo/livepulse`).
+3. **Déploiement sur Cloud Run (`gcloud run deploy`)** :
+   * Déploie la nouvelle révision sur Cloud Run avec `2 vCPU`, `1 GiB RAM`, affinité de session (`--session-affinity`), timeout de `3600s` pour les sessions vocales longues, et associe le compte de service d'exécution à moindre privilège (`secrets.GCP_RUNTIME_SA`).
+4. **Vérification Post-Déploiement (`Smoke Test`)** :
+   * Récupère l'URL HTTPS publique du service Cloud Run déployé et appelle `GET ${SERVICE_URL}/api/health` pour confirmer que le nouveau conteneur répond `"status":"ok"` en production.
+
+---
+
 ## 🚀 Exécution en Local
 
 ### 1. Prérequis
@@ -65,24 +122,7 @@ Ouvrez ensuite **`http://localhost:8765`** (ou **`https://localhost:8766`**).
 
 ---
 
-## 🧪 Tests Fonctionnels & Audits de Sécurité
-
-Avant chaque déploiement, trois contrôles automatisés valident le fonctionnement et la sécurité de l'application :
-
-```bash
-# 1. Tests fonctionnels FastAPI, UI & cycle de vie de session Live (Pytest)
-python -m pytest tests/ -v
-
-# 2. Analyse statique de sécurité du code Python (Bandit)
-bandit -r app.py -ll -ii
-
-# 3. Audit des vulnérabilités CVE sur les dépendances (pip-audit via OSV)
-pip-audit -r requirements.txt --vulnerability-service osv
-```
-
----
-
-## 🔐 Sécurité & Chaîne CI/CD GitHub Actions → Cloud Run
+## 🔐 Sécurité & Configuration des Secrets GitHub Actions
 
 ### Bonnes Pratiques DevSecOps Appliquées
 1. **Zéro identifiant GCP en dur dans le code ou le workflow YAML** :
@@ -90,13 +130,11 @@ pip-audit -r requirements.txt --vulnerability-service osv
    * Toutes les valeurs sensibles d'infrastructure sont injectées via **GitHub Actions Encrypted Secrets** (`${{ secrets.* }}`), ce qui les masque automatiquement (`***`) dans les journaux de build.
 2. **Authentification Sans Clé (Workload Identity Federation OIDC)** :
    * Aucune clé JSON de compte de service n'est créée (`constraints/iam.disableServiceAccountKeyCreation` respecté).
-   * Le fournisseur OIDC Google Cloud vérifie cryptographiquement que le jeton provient **exclusivement** de ce dépôt GitHub **et** de la branche `refs/heads/main`.
 3. **Moindre Privilège (Least Privilege IAM) & Conteneur Non-Root** :
    * Séparation stricte entre le compte de déploiement CI/CD (`github-cicd-deployer`) et le compte d'exécution Cloud Run (`livepulse-runtime-sa`, limité à `roles/aiplatform.user` et `roles/logging.logWriter`).
-   * Le conteneur Docker s'exécute sous l'utilisateur système non-privilégié `appuser`.
 
-### Configuration des Secrets GitHub Actions
-Dans votre dépôt GitHub (**Settings → Secrets and variables → Actions → New repository secret**), les 5 secrets suivants alimentent [`.github/workflows/ci-cd-cloudrun.yml`](.github/workflows/ci-cd-cloudrun.yml) :
+### Tableau des 5 Secrets GitHub Actions
+Dans votre dépôt GitHub (**Settings → Secrets and variables → Actions → Repository secrets**), les 5 secrets suivants alimentent [`.github/workflows/ci-cd-cloudrun.yml`](.github/workflows/ci-cd-cloudrun.yml) :
 
 | Nom du Secret GitHub | Description |
 | :--- | :--- |
