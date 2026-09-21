@@ -17,6 +17,8 @@
   const GOOGLE_SEARCH_SUPPORTED_MODELS = new Set([
     'gemini-3.8-live-preview',
     'gemini-3.8-live',
+    'gemini-3.5-live-preview',
+    'gemini-3.5-live-thinking-preview',
     'gemini-3.1-live',
     'gemini-live-2.5-flash-native-audio',
     'gemini-2.0-flash-live-preview-04-09',
@@ -622,6 +624,9 @@
         carrierTag.textContent = `${establishedModel} • ${establishedRegion}`;
       }
 
+      if (msg.fallback_used && msg.fallback_reason) {
+        appendSystemLog(`⚠️ ${msg.fallback_reason}`);
+      }
       appendSystemLog(
         `Session Live établie — Région : ${establishedRegion} | Modèle utilisé : ${establishedModel} | Voix utilisée : ${establishedVoice} [FR] | Google Search : ${establishedSearch ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`
       );

@@ -135,6 +135,7 @@ class LiveSessionBridge:
         self.session_id = session_id
         self.project = project
         self.location = location
+        self._initial_location = location
         self.requested_model = requested_model
         self.active_model = requested_model
         self.fallback_used = False
@@ -165,104 +166,124 @@ class LiveSessionBridge:
     def start(self):
         self._task = asyncio.create_task(self._run_lifecycle())
 
+    def _build_candidate_attempts(self):
+        """Return an ordered list of (model_id, location, is_fallback, reason) for the requested model."""
+        req = self.requested_model
+        loc = self._initial_location
+        regions = [loc, "us-central1"] if loc != "us-central1" else ["us-central1"]
+        attempts = []
+
+        # 1. Exact requested model in the requested region
+        attempts.append((req, loc, False, None))
+
+        if req.startswith("gemini-3.1"):
+            # Try official Vertex AI Model Garden IDs for 3.1 Live first
+            for r in regions:
+                attempts.append(("gemini-3.1-flash-live-preview-04-2026", r, False, None))
+                attempts.append(("gemini-3.1-flash-live-preview", r, False, None))
+            # On Vertex AI, 1000271 (gemini-3.1-flash-live-preview-04-2026) has live_api_supported=false;
+            # fall back to gemini-3.5-live-preview (direct successor) or gemini-live-2.5-flash-native-audio (GA in region)
+            # instead of gemini-3.8-live-preview
+            attempts.append((
+                "gemini-3.5-live-preview",
+                "us-central1",
+                True,
+                f"Sur Vertex AI, '{req}' (1000271) est désactivé (live_api_supported=false) -> relais assuré par son successeur 'gemini-3.5-live-preview' (us-central1).",
+            ))
+            attempts.append((
+                FALLBACK_LIVE_MODEL,
+                loc,
+                True,
+                f"Sur Vertex AI, '{req}' n'est pas actif -> relais assuré par '{FALLBACK_LIVE_MODEL}' ({loc}).",
+            ))
+        elif req.startswith("gemini-3.5"):
+            if loc != "us-central1":
+                attempts.append((
+                    req,
+                    "us-central1",
+                    True,
+                    f"'{req}' est hébergé sur us-central1 -> relais régional assuré par us-central1 ({req}).",
+                ))
+            attempts.append((
+                FALLBACK_LIVE_MODEL,
+                loc,
+                True,
+                f"'{req}' non disponible -> relais assuré par '{FALLBACK_LIVE_MODEL}' ({loc}).",
+            ))
+        elif req.startswith("gemini-3.8"):
+            # Try gemini-3.8-live-preview in requested region then us-central1
+            if req != "gemini-3.8-live-preview":
+                attempts.append((
+                    "gemini-3.8-live-preview",
+                    loc,
+                    True,
+                    f"'{req}' -> relais assuré par 'gemini-3.8-live-preview' ({loc}).",
+                ))
+            if loc != "us-central1":
+                attempts.append((
+                    "gemini-3.8-live-preview",
+                    "us-central1",
+                    True,
+                    f"'{req}' est hébergé sur us-central1 -> relais régional assuré par us-central1 (gemini-3.8-live-preview).",
+                ))
+            attempts.append((
+                FALLBACK_LIVE_MODEL,
+                loc,
+                True,
+                f"'{req}' non disponible -> relais assuré par '{FALLBACK_LIVE_MODEL}' ({loc}).",
+            ))
+        else:
+            # e.g. gemini-live-2.5-flash-native-audio
+            if loc != "us-central1":
+                attempts.append((
+                    req,
+                    "us-central1",
+                    True,
+                    f"Relais régional assuré par us-central1 ({req}).",
+                ))
+
+        return attempts
+
     async def _run_lifecycle(self):
+        attempts = self._build_candidate_attempts()
+        last_err: Optional[Exception] = None
         try:
-            await self._connect_and_stream(self.requested_model, self.location)
-            return
-        except Exception as first_err:
-            err_str = str(first_err)
-            # If user requested gemini-3.1-live, try gemini-3.1-flash-live-preview first
-            if self.requested_model.startswith("gemini-3.1") and not self.ready_event.is_set():
-                for loc_31 in ([self.location, "us-central1"] if self.location != "us-central1" else ["us-central1"]):
-                    try:
-                        self.active_model = "gemini-3.1-flash-live-preview"
-                        self.location = loc_31
-                        self.fallback_used = False
-                        await self._connect_and_stream("gemini-3.1-flash-live-preview", loc_31)
-                        return
-                    except Exception:
-                        pass
-
-            # 1. Try gemini-3.8-live-preview in the user's requested location first
-            if (self.requested_model.startswith("gemini-3.8-live") or self.requested_model.startswith("gemini-3.1")) and not self.ready_event.is_set():
-                try:
-                    is_fallback = not self.requested_model.startswith("gemini-3.8-live")
-                    self.active_model = "gemini-3.8-live-preview"
-                    self.fallback_used = is_fallback
-                    if is_fallback:
-                        self.fallback_reason = (
-                            f"'{self.requested_model}' -> relais assuré par 'gemini-3.8-live-preview' ({self.location})."
-                        )
-                    await self._connect_and_stream("gemini-3.8-live-preview", self.location)
+            for cand_model, cand_loc, is_fb, fb_reason in attempts:
+                if self.ready_event.is_set() or self.stop_event.is_set():
                     return
-                except Exception:
-                    pass
-
-            # 2. Try FALLBACK_LIVE_MODEL in the user's requested location (e.g. europe-west1)
-            if (
-                not self.ready_event.is_set()
-                and (
-                    "1008" in err_str
-                    or "not found" in err_str.lower()
-                    or "not supported" in err_str.lower()
-                )
-            ):
-                logger.info(
-                    "Session %s: Modèle '%s' non disponible sur %s/%s -> tentative sur '%s' (%s)",
-                    self.session_id,
-                    self.requested_model,
-                    self.project,
-                    self.location,
-                    FALLBACK_LIVE_MODEL,
-                    self.location,
-                )
-                self.active_model = FALLBACK_LIVE_MODEL
-                self.fallback_used = True
-                self.fallback_reason = (
-                    f"'{self.requested_model}' n'est pas encore publié sur l'endpoint Live de "
-                    f"{self.project} ({self.location}). Relais temps réel assuré par '{FALLBACK_LIVE_MODEL}' ({self.location})."
-                )
                 try:
-                    await self._connect_and_stream(FALLBACK_LIVE_MODEL, self.location)
+                    self.active_model = cand_model
+                    self.fallback_used = is_fb
+                    self.fallback_reason = fb_reason
+                    await self._connect_and_stream(cand_model, cand_loc)
                     return
-                except Exception as second_err:
-                    sec_str = str(second_err)
-                    if self.location != "us-central1" and (
-                        "1008" in sec_str or "not found" in sec_str.lower()
-                    ):
-                        # 3. If the requested region has no Live endpoint at all, relay via us-central1 (preferring 3.8-live-preview)
-                        for relay_model in ["gemini-3.8-live-preview", FALLBACK_LIVE_MODEL]:
-                            try:
-                                self.active_model = relay_model
-                                self.fallback_reason = (
-                                    f"L'API Live n'est pas encore déployée dans la région '{self.location}' "
-                                    f"sur {self.project}. Relais régional assuré par us-central1 ({relay_model})."
-                                )
-                                await self._connect_and_stream(relay_model, "us-central1")
-                                return
-                            except Exception as third_err:
-                                second_err = third_err
-
-                    self.startup_error = str(second_err)
-                    self.ready_event.set()
-                    await self.event_queue.put(
-                        {"type": "error", "message": f"Erreur Vertex AI Live : {second_err}"}
+                except Exception as err:
+                    last_err = err
+                    if self.ready_event.is_set():
+                        # Failed after session was already established
+                        break
+                    logger.info(
+                        "Session %s: tentative (%s @ %s) échouée: %s",
+                        self.session_id,
+                        cand_model,
+                        cand_loc,
+                        str(err)[:140],
                     )
-            else:
-                self.startup_error = err_str
-                self.ready_event.set()
-                await self.event_queue.put(
-                    {"type": "error", "message": f"Erreur Vertex AI Live : {first_err}"}
-                )
+
+            self.startup_error = str(last_err) if last_err else "Aucun endpoint Live disponible"
+            self.ready_event.set()
+            await self.event_queue.put(
+                {"type": "error", "message": f"Erreur Vertex AI Live : {self.startup_error}"}
+            )
         finally:
             self.stop_event.set()
             await self.event_queue.put({"type": "session_closed"})
 
     async def _connect_and_stream(self, model_name: str, target_location: Optional[str] = None):
-        loc = target_location or self.location
+        loc = target_location or self._initial_location
         client = (
             self.client
-            if (self.api_key or loc == self.location)
+            if (self.api_key or loc == self._initial_location)
             else genai.Client(vertexai=True, project=self.project, location=loc)
         )
         async with client.aio.live.connect(model=model_name, config=self.live_config) as session:
