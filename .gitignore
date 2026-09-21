@@ -12,3 +12,4 @@ key.pem
 .DS_Store
 *.md
 !README.md
+!README.fr.md
