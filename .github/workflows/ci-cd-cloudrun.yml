@@ -98,7 +98,20 @@ jobs:
             --max-instances=5 \
             --timeout=3600 \
             --session-affinity \
-            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }},GOOGLE_CLOUD_LOCATION=us-central1,GEMINI_LIVE_MODEL=gemini-3.8-live-preview"
+            --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }},GOOGLE_CLOUD_LOCATION=us-central1,GEMINI_LIVE_MODEL=gemini-3.8-live-preview,CUSTOM_DOMAIN=${{ secrets.CUSTOM_DOMAIN }}"
+
+      - name: Ensure Cloud Run Custom Domain Mapping
+        if: ${{ secrets.CUSTOM_DOMAIN != '' }}
+        run: |
+          gcloud beta run domain-mappings describe \
+            --domain="${{ secrets.CUSTOM_DOMAIN }}" \
+            --region="${{ secrets.GCP_REGION }}" \
+            --project="${{ secrets.GCP_PROJECT_ID }}" >/dev/null 2>&1 || \
+          gcloud beta run domain-mappings create \
+            --service="${{ env.SERVICE_NAME }}" \
+            --domain="${{ secrets.CUSTOM_DOMAIN }}" \
+            --region="${{ secrets.GCP_REGION }}" \
+            --project="${{ secrets.GCP_PROJECT_ID }}" || true
 
       - name: Verify Live Cloud Run Health Check
         run: |

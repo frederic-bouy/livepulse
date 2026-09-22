@@ -129,7 +129,7 @@ Then open **`http://localhost:8765`** (or **`https://localhost:8766`**).
    * Strict separation between the CI/CD deployment service account (`github-cicd-deployer`) and the Cloud Run runtime service account (`livepulse-runtime-sa`, restricted to `roles/aiplatform.user` and `roles/logging.logWriter`).
 
 ### GitHub Actions Secrets Table
-In your GitHub repository (**Settings → Secrets and variables → Actions → Repository secrets**), configure the following 5 secrets used by [`.github/workflows/ci-cd-cloudrun.yml`](.github/workflows/ci-cd-cloudrun.yml):
+In your GitHub repository (**Settings → Secrets and variables → Actions → Repository secrets**), configure the following 6 secrets used by [`.github/workflows/ci-cd-cloudrun.yml`](.github/workflows/ci-cd-cloudrun.yml):
 
 | GitHub Secret Name | Description |
 | :--- | :--- |
@@ -138,6 +138,44 @@ In your GitHub repository (**Settings → Secrets and variables → Actions → 
 | `GCP_WIF_PROVIDER` | Full Workload Identity Provider resource name (`projects/<NUM>/locations/global/workloadIdentityPools/github-pool/providers/github-provider`) |
 | `GCP_DEPLOYER_SA` | Service Account email used by GitHub Actions to build and deploy |
 | `GCP_RUNTIME_SA` | Least-privilege Service Account email attached to the Cloud Run service |
+| `CUSTOM_DOMAIN` | *(Optional)* Custom FQDN mapped to the Cloud Run service (e.g., `livepulse.example.com`) |
+
+### Custom Domain Mapping & Updating Google Cloud DNS
+When the `CUSTOM_DOMAIN` secret is configured in GitHub Actions, the CI/CD pipeline automatically injects `CUSTOM_DOMAIN` into the Cloud Run environment and ensures the **Cloud Run Domain Mapping** (`gcloud beta run domain-mappings`) is active with a Google-managed TLS certificate.
+
+To route your custom subdomain to Cloud Run via **Google Cloud DNS**, execute the following steps from your terminal (using environment variables so no domain or DNS zone identifiers are hardcoded in the repository):
+
+1. **Verify your base domain in Google Cloud**:
+   ```bash
+   gcloud domains list-user-verified
+   ```
+2. **Create the Cloud Run Domain Mapping** (if not already created by the CI/CD pipeline):
+   ```bash
+   export CUSTOM_DOMAIN="livepulse.example.com"
+   export GCP_PROJECT_ID="your-cloudrun-project"
+   export GCP_REGION="europe-west4"
+
+   gcloud beta run domain-mappings create \
+     --service="livepulse" \
+     --domain="${CUSTOM_DOMAIN}" \
+     --region="${GCP_REGION}" \
+     --project="${GCP_PROJECT_ID}"
+   ```
+3. **Add or Update the `CNAME` Record in Google Cloud DNS**:
+   Point the custom subdomain (`${CUSTOM_DOMAIN}.` with a trailing dot) to **`ghs.googlehosted.com.`** in the GCP project that hosts your Cloud DNS managed zone:
+   ```bash
+   export DNS_PROJECT_ID="your-dns-host-project"
+   export DNS_ZONE_NAME="your-cloud-dns-zone"
+
+   # Create the CNAME record (or replace 'create' with 'update' if it already exists)
+   gcloud dns record-sets create "${CUSTOM_DOMAIN}." \
+     --type="CNAME" \
+     --ttl="300" \
+     --rrdatas="ghs.googlehosted.com." \
+     --zone="${DNS_ZONE_NAME}" \
+     --project="${DNS_PROJECT_ID}"
+   ```
+   Once DNS propagation completes (~1–5 minutes), Google Cloud Run automatically provisions and renews the HTTPS certificate for `https://${CUSTOM_DOMAIN}`.
 
 ### Initial GCP Infrastructure Bootstrap
 To automatically provision Artifact Registry, Service Accounts, and Workload Identity Federation on a new GCP project:

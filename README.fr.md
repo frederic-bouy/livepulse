@@ -128,8 +128,8 @@ Ouvrez ensuite **`http://localhost:8765`** (ou **`https://localhost:8766`**).
 3. **Moindre Privilège (Least Privilege IAM) & Conteneur Non-Root** :
    * Séparation stricte entre le compte de déploiement CI/CD (`github-cicd-deployer`) et le compte d'exécution Cloud Run (`livepulse-runtime-sa`, limité à `roles/aiplatform.user` et `roles/logging.logWriter`).
 
-### Tableau des 5 Secrets GitHub Actions
-Dans votre dépôt GitHub (**Settings → Secrets and variables → Actions → Repository secrets**), les 5 secrets suivants alimentent [`.github/workflows/ci-cd-cloudrun.yml`](.github/workflows/ci-cd-cloudrun.yml) :
+### Tableau des 6 Secrets GitHub Actions
+Dans votre dépôt GitHub (**Settings → Secrets and variables → Actions → Repository secrets**), les 6 secrets suivants alimentent [`.github/workflows/ci-cd-cloudrun.yml`](.github/workflows/ci-cd-cloudrun.yml) :
 
 | Nom du Secret GitHub | Description |
 | :--- | :--- |
@@ -138,6 +138,44 @@ Dans votre dépôt GitHub (**Settings → Secrets and variables → Actions → 
 | `GCP_WIF_PROVIDER` | Ressource complète du fournisseur Workload Identity (`projects/<NUM>/locations/global/workloadIdentityPools/github-pool/providers/github-provider`) |
 | `GCP_DEPLOYER_SA` | Email du Service Account utilisé par GitHub Actions pour builder et déployer |
 | `GCP_RUNTIME_SA` | Email du Service Account attaché au conteneur Cloud Run en production |
+| `CUSTOM_DOMAIN` | *(Optionnel)* Nom de domaine personnalisé associé au service Cloud Run (ex. `livepulse.example.com`) |
+
+### Nom de Domaine Personnalisé & Mise à Jour de Google Cloud DNS
+Lorsque le secret `CUSTOM_DOMAIN` est renseigné dans GitHub Actions, le pipeline CI/CD injecte automatiquement la variable `CUSTOM_DOMAIN` dans Cloud Run et vérifie/crée le **Cloud Run Domain Mapping** (`gcloud beta run domain-mappings`) avec génération automatique d'un certificat HTTPS managé par Google.
+
+Pour faire pointer votre sous-domaine vers Cloud Run dans **Google Cloud DNS**, exécutez les commandes suivantes depuis votre terminal (en utilisant des variables d'environnement afin de ne jamais stocker votre nom de domaine ou de zone DNS en clair dans le dépôt Git) :
+
+1. **Vérifier que votre domaine racine est validé sur Google Cloud** :
+   ```bash
+   gcloud domains list-user-verified
+   ```
+2. **Créer le Domain Mapping sur Cloud Run** (s'il n'est pas déjà créé par le pipeline CI/CD) :
+   ```bash
+   export CUSTOM_DOMAIN="livepulse.example.com"
+   export GCP_PROJECT_ID="votre-projet-cloudrun"
+   export GCP_REGION="europe-west4"
+
+   gcloud beta run domain-mappings create \
+     --service="livepulse" \
+     --domain="${CUSTOM_DOMAIN}" \
+     --region="${GCP_REGION}" \
+     --project="${GCP_PROJECT_ID}"
+   ```
+3. **Ajouter ou Mettre à Jour l'enregistrement `CNAME` dans Google Cloud DNS** :
+   Faites pointer votre sous-domaine (`${CUSTOM_DOMAIN}.` avec un point final) vers **`ghs.googlehosted.com.`** dans le projet GCP qui héberge votre zone publique Cloud DNS :
+   ```bash
+   export DNS_PROJECT_ID="votre-projet-dns"
+   export DNS_ZONE_NAME="votre-zone-cloud-dns"
+
+   # Créer l'enregistrement CNAME (ou remplacer 'create' par 'update' s'il existe déjà)
+   gcloud dns record-sets create "${CUSTOM_DOMAIN}." \
+     --type="CNAME" \
+     --ttl="300" \
+     --rrdatas="ghs.googlehosted.com." \
+     --zone="${DNS_ZONE_NAME}" \
+     --project="${DNS_PROJECT_ID}"
+   ```
+   Dès que la propagation DNS est effective (~1 à 5 minutes), Google Cloud Run émet et renouvelle automatiquement le certificat TLS pour `https://${CUSTOM_DOMAIN}`.
 
 ### Bootstrap Initial de l'Infrastructure GCP
 Pour provisionner automatiquement Artifact Registry, les Service Accounts et Workload Identity Federation sur un nouveau projet GCP :

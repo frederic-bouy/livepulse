@@ -38,6 +38,7 @@ def _resolve_default_project() -> str:
 DEFAULT_PROJECT = _resolve_default_project()
 DEFAULT_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION") or os.environ.get("GCP_LOCATION", "us-central1")
 REQUESTED_MODEL_DEFAULT = os.environ.get("GEMINI_LIVE_MODEL", "gemini-3.8-live")
+CUSTOM_DOMAIN = os.environ.get("CUSTOM_DOMAIN", "").strip()
 FALLBACK_LIVE_MODEL = "gemini-live-2.5-flash-native-audio"
 DEFAULT_VOICE = "Aoede"
 DEFAULT_SYSTEM_PROMPT = (
@@ -86,6 +87,7 @@ async def health_check():
             "project": DEFAULT_PROJECT,
             "default_region": DEFAULT_LOCATION,
             "default_model": REQUESTED_MODEL_DEFAULT,
+            "custom_domain": CUSTOM_DOMAIN or None,
             "active_sessions": len( ACTIVE_SESSIONS ) if "ACTIVE_SESSIONS" in globals() else 0,
         }
     )
