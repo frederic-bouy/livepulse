@@ -6,6 +6,8 @@
 
 ![Console vocale temps réel LivePulse](./static/livepulse_console_demo.png)
 
+**🚀 You can test it live here : [https://livepulse.fred-demo.net/](https://livepulse.fred-demo.net/)**
+
 ---
 
 ## ✨ Fonctionnalités Principales
