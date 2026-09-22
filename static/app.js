@@ -16,6 +16,7 @@
   // Models supporting the native Google Search grounding tool
   const GOOGLE_SEARCH_SUPPORTED_MODELS = new Set([
     'gemini-3.8-live-preview',
+    'gemini-3.8-live-extended-thinking-preview',
     'gemini-3.8-live',
     'gemini-3.5-live-preview',
     'gemini-3.5-live-thinking-preview',

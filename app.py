@@ -211,7 +211,15 @@ class LiveSessionBridge:
                 f"'{req}' non disponible -> relais assuré par '{FALLBACK_LIVE_MODEL}' ({loc}).",
             ))
         elif req.startswith("gemini-3.8"):
-            # Try gemini-3.8-live-preview in requested region then us-central1
+            # First try the exact requested 3.8 model (e.g. gemini-3.8-live-extended-thinking-preview) on us-central1
+            if loc != "us-central1":
+                attempts.append((
+                    req,
+                    "us-central1",
+                    True,
+                    f"'{req}' est hébergé sur us-central1 -> relais régional assuré par us-central1 ({req}).",
+                ))
+            # Then try gemini-3.8-live-preview in requested region then us-central1
             if req != "gemini-3.8-live-preview":
                 attempts.append((
                     "gemini-3.8-live-preview",
@@ -219,13 +227,13 @@ class LiveSessionBridge:
                     True,
                     f"'{req}' -> relais assuré par 'gemini-3.8-live-preview' ({loc}).",
                 ))
-            if loc != "us-central1":
-                attempts.append((
-                    "gemini-3.8-live-preview",
-                    "us-central1",
-                    True,
-                    f"'{req}' est hébergé sur us-central1 -> relais régional assuré par us-central1 (gemini-3.8-live-preview).",
-                ))
+                if loc != "us-central1":
+                    attempts.append((
+                        "gemini-3.8-live-preview",
+                        "us-central1",
+                        True,
+                        f"'{req}' -> relais assuré par 'gemini-3.8-live-preview' (us-central1).",
+                    ))
             attempts.append((
                 FALLBACK_LIVE_MODEL,
                 loc,
