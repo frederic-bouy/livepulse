@@ -52,6 +52,48 @@
 
 ---
 
+## 🖥️ Co-Vision d'Écran en Temps Réel & Pointeur Laser Orange (`Stratégie C`)
+
+LivePulse vous permet de partager une fenêtre, un onglet de navigateur ou votre écran complet (`🖥️ PARTAGER ÉCRAN`) **à chaud pendant une conversation vocale, sans redémarrer la session Gemini Live**.
+
+```mermaid
+flowchart LR
+    subgraph Browser ["Navigateur Frontend (WebRTC + Canvas 60 FPS)"]
+        Cap["getDisplayMedia()\nFlux Vidéo d'Écran"] --> Mon["Moniteur Dédié UI1\n(MOD. B #screenMonitorCanvas)"]
+        Mouse["Clic Gauche Maintenu\n(mousedown + mousemove)"] --> Laser["Pointeur Laser Orange\n(Réticule + Halo #FF5722)"]
+        Laser --> Mon
+        Mon --> Diff["Moteur Smart Diff\n(Grille 64x36 > 1.0% @ 1 FPS)"]
+        Mic["Micro Web Audio RMS > 0.022\nou Clic Laser / Envoi Texte"] --> HD["Déclencheur Flash HD\n(JPEG 1280p @ qualité 0.88)"]
+    end
+
+    subgraph Backend ["Pont FastAPI (app.py)"]
+        Diff -->|"JPEG 1024p (si changement)"| API["POST /api/live/send\n(type: image_in)"]
+        HD -->|"JPEG 1280p HD"| API
+        API --> SDK["session.send_realtime_input(\nvideo=types.Blob(image/jpeg))"]
+    end
+
+    SDK --> Vertex["Vertex AI Gemini Live\n(3.8 Live / Extended Thinking / 3.5)"]
+```
+
+### 1. Stratégie de Capture Hybride (`Stratégie C` : `1 FPS Smart Diff` + `Flash HD à la Voix / Laser`)
+* **Veille Visuelle Économe (`1 FPS Smart Diff`)** :
+  * Toutes les `1000 ms`, `computeScreenDiffPercent()` échantillonne l'écran partagé sur une grille de luminance `64×36` et la compare à l'image précédente.
+  * Si la différence visuelle est **`< 1,0 %`** (écran immobile), **aucune image n'est envoyée** afin d'économiser la bande passante et les jetons de contexte.
+  * Dès que vous faites défiler une page, changez d'onglet ou modifiez un graphique (`≥ 1,0 %` d'écart), une image `1024p` (qualité JPEG `0.72`) est transmise automatiquement.
+* **Cliché Haute Définition (`1280p`, qualité `0.88`) Synchronisé à la Parole & au Laser** :
+  * Dès que l'analyseur Web Audio détecte que **vous commencez à parler au micro** (`rms > 0.022`, `VOICE HD`), ou lorsque vous **maintenez le clic pour viser avec le pointeur laser** (`LASER HD`), ou lorsque vous **envoyez un message texte** (`TEXT HD`), un cliché **JPEG Haute Définition `1280p`** est capturé et injecté en priorité dans le flux actif de Gemini Live afin qu'il puisse lire les petits caractères, tableaux ou blocs de code avec une netteté maximale.
+
+### 2. Option `UI1` : Moniteur Dédié 100 % dans `MOD. B` & Commutateur d'Affichage
+* Dès l'activation du partage d'écran, le panneau de droite (`MOD. B`) bascule à **100 %** sur le Moniteur Vidéo OLED dédié (`#screenMonitorContainer`) avec télémétrie en direct (`LIVE VISION // 1 FPS DIFF + HD VOICE`, `FRAMES: N (HD)`).
+* Un commutateur d'onglets (**`[📺 ÉCRAN | 📜 TRANSCRIPTION]`**) apparaît dans l'en-tête `MOD. B`, vous permettant de basculer à tout moment entre **100 % Moniteur d'Écran** et **100 % Ruban de Transcription** sans interrompre le flux vidéo.
+
+### 3. Pointeur Laser Orange Interactif au Clic Maintenu (`#FF5722`)
+* **Maintenez le clic gauche enfoncé (`mousedown` + `mousemove`)** n'importe où sur le moniteur d'écran partagé dans `MOD. B` pour faire apparaître le **pointeur laser orange Braun (`#FF5722`)** accompagné de son halo lumineux et de son réticule de visée.
+* Ce pointeur laser est **gravé directement dans l'image JPEG `1280p` envoyée à Gemini**, ce qui permet de poser des questions spatiales naturelles telles que : *« Que penses-tu de l'anomalie que je te pointe juste ici ? »*.
+* Dès que vous **relâchez le bouton de la souris** (`mouseup` / `mouseleave`), le pointeur laser **disparaît immédiatement** pour laisser les images suivantes parfaitement propres.
+
+---
+
 ## 🚀 Exécution en Local
 
 ### 1. Prérequis

@@ -52,6 +52,48 @@
 
 ---
 
+## 🖥️ Real-Time Screen Co-Vision & Interactive Orange Laser Pointer (`Strategy C`)
+
+LivePulse allows you to share a window, browser tab, or full screen (`🖥️ PARTAGER ÉCRAN`) **on the fly during an active voice conversation without restarting the Gemini Live session**.
+
+```mermaid
+flowchart LR
+    subgraph Browser ["Browser Frontend (WebRTC + Canvas 60 FPS)"]
+        Cap["getDisplayMedia()\nLive Video Stream"] --> Mon["UI1 Dedicated Monitor\n(MOD. B #screenMonitorCanvas)"]
+        Mouse["Hold Left-Click\n(mousedown + mousemove)"] --> Laser["Orange Laser Pointer\n(#FF5722 Crosshair + Halo)"]
+        Laser --> Mon
+        Mon --> Diff["Smart Diff Engine\n(64x36 grid > 1.0% @ 1 FPS)"]
+        Mic["Web Audio Mic RMS > 0.022\nor Laser Click / Text Send"] --> HD["Instant HD Trigger\n(1280p JPEG @ 0.88 quality)"]
+    end
+
+    subgraph Backend ["FastAPI Bridge (app.py)"]
+        Diff -->|"1024p JPEG (if changed)"| API["POST /api/live/send\n(type: image_in)"]
+        HD -->|"1280p HD JPEG"| API
+        API --> SDK["session.send_realtime_input(\nvideo=types.Blob(image/jpeg))"]
+    end
+
+    SDK --> Vertex["Vertex AI Gemini Live\n(3.8 Live / Extended Thinking / 3.5)"]
+```
+
+### 1. Hybrid Capture Strategy (`Strategy C`: `1 FPS Smart Diff` + `Instant Voice/Laser HD`)
+* **Background Visual Awareness (`1 FPS Smart Diff`)**:
+  * Every `1000 ms`, `computeScreenDiffPercent()` downsamples the shared screen onto an offscreen `64×36` luminance grid and compares it with the previous frame.
+  * If the visual difference is **`< 1.0%`** (static screen), **zero frames are transmitted** to save bandwidth and context tokens.
+  * As soon as you scroll, switch tabs, or update a chart (`≥ 1.0%` pixel delta), a `1024p` (`0.72` JPEG quality) frame is streamed automatically.
+* **Instant High-Definition (`1280p`, `0.88` quality) Trigger on Speech & Laser**:
+  * As soon as the Web Audio microphone analyser detects that **you start speaking** (`rms > 0.022`, `VOICE HD`), or when you **hold the mouse button to point with the laser** (`LASER HD`), or when you **send a text message** (`TEXT HD`), an immediate **`1280p` High-Definition JPEG** is captured and injected into the active Gemini Live stream so the model can read fine typography, code, or tables with maximum clarity.
+
+### 2. Option `UI1`: Dedicated `MOD. B` Screen Monitor & View Switcher
+* When screen sharing starts, the right panel (`MOD. B`) switches **100%** to the dedicated OLED Screen Monitor (`#screenMonitorContainer`) with live telemetry (`LIVE VISION // 1 FPS DIFF + HD VOICE`, `FRAMES: N (HD)`).
+* A header tab switcher (**`[📺 ÉCRAN | 📜 TRANSCRIPTION]`**) appears in `MOD. B`, allowing you to toggle at any time between **100% Screen Monitor** and **100% Transcription Tape** without interrupting the video stream.
+
+### 3. Hold-to-Point Interactive Orange Laser Pointer (`#FF5722`)
+* **Hold Left-Click (`mousedown` + `mousemove`)** anywhere on the shared screen monitor in `MOD. B` to activate the **Braun Orange Laser Pointer (`#FF5722`)** with a glowing target reticle.
+* The laser pointer is **burned directly into the `1280p` JPEG frame sent to Gemini**, enabling natural spatial questions such as *"What do you think of the anomaly I'm pointing at right here?"*.
+* Releasing the mouse button (`mouseup` / `mouseleave`) **immediately hides the laser pointer** so subsequent frames remain clean.
+
+---
+
 ## 🚀 Running Locally
 
 ### 1. Prerequisites
