@@ -140,42 +140,51 @@ In your GitHub repository (**Settings → Secrets and variables → Actions → 
 | `GCP_RUNTIME_SA` | Least-privilege Service Account email attached to the Cloud Run service |
 | `CUSTOM_DOMAIN` | *(Optional)* Custom FQDN mapped to the Cloud Run service (e.g., `livepulse.example.com`) |
 
-### Custom Domain Mapping & Updating Google Cloud DNS
-When the `CUSTOM_DOMAIN` secret is configured in GitHub Actions, the CI/CD pipeline automatically injects `CUSTOM_DOMAIN` into the Cloud Run environment and ensures the **Cloud Run Domain Mapping** (`gcloud beta run domain-mappings`) is active with a Google-managed TLS certificate.
+### Custom Domain, Global HTTPS Load Balancer, Cloud IAP & Updating Google Cloud DNS
+In production, **LivePulse** is protected by **Google Cloud Identity-Aware Proxy (IAP)** behind a **Global External Application Load Balancer (HTTPS)** connected to a **Serverless NEG** (`europe-west4`), while the Cloud Run service is locked down with `--ingress=internal-and-cloud-load-balancing` and `--invoker-iam-check`.
 
-To route your custom subdomain to Cloud Run via **Google Cloud DNS**, execute the following steps from your terminal (using environment variables so no domain or DNS zone identifiers are hardcoded in the repository):
+To configure the custom domain, enable **Cloud IAP**, and update **Google Cloud DNS** from your terminal (using environment variables so no domain or DNS zone identifiers are hardcoded in the repository):
 
-1. **Verify your base domain in Google Cloud**:
-   ```bash
-   gcloud domains list-user-verified
-   ```
-2. **Create the Cloud Run Domain Mapping** (if not already created by the CI/CD pipeline):
+1. **Reserve a Global Static IPv4 Address & Provision the Google-Managed SSL Certificate**:
    ```bash
    export CUSTOM_DOMAIN="livepulse.example.com"
    export GCP_PROJECT_ID="your-cloudrun-project"
    export GCP_REGION="europe-west4"
 
-   gcloud beta run domain-mappings create \
-     --service="livepulse" \
-     --domain="${CUSTOM_DOMAIN}" \
-     --region="${GCP_REGION}" \
-     --project="${GCP_PROJECT_ID}"
+   gcloud compute addresses create livepulse-lb-ip --ip-version=IPV4 --global --project="${GCP_PROJECT_ID}"
+   export LB_IP=$(gcloud compute addresses describe livepulse-lb-ip --global --project="${GCP_PROJECT_ID}" --format="value(address)")
+
+   gcloud compute ssl-certificates create livepulse-ssl-cert --domains="${CUSTOM_DOMAIN}" --global --project="${GCP_PROJECT_ID}"
    ```
-3. **Add or Update the `CNAME` Record in Google Cloud DNS**:
-   Point the custom subdomain (`${CUSTOM_DOMAIN}.` with a trailing dot) to **`ghs.googlehosted.com.`** in the GCP project that hosts your Cloud DNS managed zone:
+2. **Add or Update the `A` Record in Google Cloud DNS**:
+   Point your custom subdomain (`${CUSTOM_DOMAIN}.` with a trailing dot) to the Load Balancer static IP (`${LB_IP}`) in the GCP project that hosts your Cloud DNS managed zone:
    ```bash
    export DNS_PROJECT_ID="your-dns-host-project"
    export DNS_ZONE_NAME="your-cloud-dns-zone"
 
-   # Create the CNAME record (or replace 'create' with 'update' if it already exists)
+   # Delete any previous CNAME record if switching from Cloud Run Domain Mapping
+   gcloud dns record-sets delete "${CUSTOM_DOMAIN}." --type="CNAME" --zone="${DNS_ZONE_NAME}" --project="${DNS_PROJECT_ID}" --quiet || true
+
+   # Create the A record pointing to the Global HTTPS Load Balancer IP
    gcloud dns record-sets create "${CUSTOM_DOMAIN}." \
-     --type="CNAME" \
+     --type="A" \
      --ttl="300" \
-     --rrdatas="ghs.googlehosted.com." \
+     --rrdatas="${LB_IP}" \
      --zone="${DNS_ZONE_NAME}" \
      --project="${DNS_PROJECT_ID}"
    ```
-   Once DNS propagation completes (~1–5 minutes), Google Cloud Run automatically provisions and renews the HTTPS certificate for `https://${CUSTOM_DOMAIN}`.
+3. **Enable Google Cloud IAP & Authorize Users/Domains**:
+   ```bash
+   gcloud iap web enable --resource-type=backend-services --service=livepulse-backend-service --project="${GCP_PROJECT_ID}"
+
+   # Grant roles/iap.httpsResourceAccessor to authorized domains or users
+   gcloud iap web add-iam-policy-binding \
+     --resource-type=backend-services \
+     --service=livepulse-backend-service \
+     --member="domain:example.com" \
+     --role="roles/iap.httpsResourceAccessor" \
+     --project="${GCP_PROJECT_ID}"
+   ```
 
 ### Initial GCP Infrastructure Bootstrap
 To automatically provision Artifact Registry, Service Accounts, and Workload Identity Federation on a new GCP project:

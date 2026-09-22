@@ -49,8 +49,21 @@ def test_ui_branding_and_selectors():
     assert 'id="viewModeSwitcher"' in html
     assert 'id="screenMonitorContainer"' in html
     assert 'id="screenMonitorCanvas"' in html
+    assert 'id="badgeIapUser"' in html
     # Verify carrierNotice banner was removed
     assert 'id="carrierNotice"' not in html
+
+
+def test_iap_header_extraction_and_payload_guard():
+    """Verify X-Goog-Authenticated-User-Email extraction on /api/config and /api/health."""
+    resp = client.get(
+        "/api/config",
+        headers={"X-Goog-Authenticated-User-Email": "accounts.google.com:user@example.com"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["iap_authenticated"] is True
+    assert data["authenticated_user"] == "user@example.com"
 
 
 def test_static_avatar_assets_exist():

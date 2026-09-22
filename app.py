@@ -39,6 +39,10 @@ DEFAULT_PROJECT = _resolve_default_project()
 DEFAULT_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION") or os.environ.get("GCP_LOCATION", "us-central1")
 REQUESTED_MODEL_DEFAULT = os.environ.get("GEMINI_LIVE_MODEL", "gemini-3.8-live")
 CUSTOM_DOMAIN = os.environ.get("CUSTOM_DOMAIN", "").strip()
+IAP_EXPECTED_AUDIENCE = os.environ.get("IAP_EXPECTED_AUDIENCE", "").strip()
+MAX_CONCURRENT_SESSIONS = int(os.environ.get("MAX_CONCURRENT_SESSIONS", "15"))
+SESSION_IDLE_TIMEOUT_SEC = int(os.environ.get("SESSION_IDLE_TIMEOUT_SEC", "600"))
+MAX_BASE64_PAYLOAD_CHARS = int(os.environ.get("MAX_BASE64_PAYLOAD_CHARS", "2000000"))
 FALLBACK_LIVE_MODEL = "gemini-live-2.5-flash-native-audio"
 DEFAULT_VOICE = "Aoede"
 DEFAULT_SYSTEM_PROMPT = (
@@ -50,18 +54,60 @@ DEFAULT_SYSTEM_PROMPT = (
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
+
+def _build_allowed_origins() -> List[str]:
+    origins = [
+        "http://localhost:8765",
+        "https://localhost:8766",
+        "http://127.0.0.1:8765",
+        "https://127.0.0.1:8766",
+    ]
+    if CUSTOM_DOMAIN:
+        origins.append(f"https://{CUSTOM_DOMAIN}")
+    return origins
+
+
+def _extract_iap_user(request: Request) -> Dict[str, Any]:
+    """Extract and optionally verify the Google Cloud IAP authenticated user header/JWT."""
+    raw_email = (request.headers.get("x-goog-authenticated-user-email") or "").strip()
+    jwt_token = (request.headers.get("x-goog-authenticated-user-jwt") or "").strip()
+    clean_email = raw_email.split(":", 1)[-1] if ":" in raw_email else raw_email
+
+    if jwt_token and IAP_EXPECTED_AUDIENCE:
+        try:
+            from google.auth.transport import requests as google_requests
+            from google.oauth2 import id_token
+
+            claims = id_token.verify_token(
+                jwt_token,
+                google_requests.Request(),
+                audience=IAP_EXPECTED_AUDIENCE,
+                certs_url="https://www.gstatic.com/iap/verify/public_key",
+            )
+            verified_email = claims.get("email") or clean_email
+            return {"email": verified_email, "iap_authenticated": True, "jwt_verified": True}
+        except Exception as exc:
+            logger.warning("IAP JWT verification warning: %s", exc)
+
+    return {
+        "email": clean_email or None,
+        "iap_authenticated": bool(clean_email or jwt_token),
+        "jwt_verified": False,
+    }
+
+
 app = FastAPI(
     title="LivePulse",
     description="Démonstrateur vocal temps réel Gemini Live sur Google Cloud Vertex AI",
-    version="1.2.0",
+    version="1.3.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_build_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -78,8 +124,9 @@ async def disable_html_js_cache(request: Request, call_next):
 
 
 @app.get("/api/health")
-async def health_check():
-    """Health & readiness endpoint for Cloud Run and CI/CD smoke tests."""
+async def health_check(request: Request):
+    """Health & readiness endpoint for Cloud Run, Load Balancer, and CI/CD smoke tests."""
+    iap_info = _extract_iap_user(request)
     return JSONResponse(
         {
             "status": "ok",
@@ -88,7 +135,9 @@ async def health_check():
             "default_region": DEFAULT_LOCATION,
             "default_model": REQUESTED_MODEL_DEFAULT,
             "custom_domain": CUSTOM_DOMAIN or None,
-            "active_sessions": len( ACTIVE_SESSIONS ) if "ACTIVE_SESSIONS" in globals() else 0,
+            "iap_authenticated": iap_info["iap_authenticated"],
+            "authenticated_user": iap_info["email"],
+            "active_sessions": len(ACTIVE_SESSIONS) if "ACTIVE_SESSIONS" in globals() else 0,
         }
     )
 
@@ -158,7 +207,7 @@ class LiveSessionBridge:
         )
 
         self.event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
-        self.input_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+        self.input_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue(maxsize=120)
         self.ready_event = asyncio.Event()
         self.stop_event = asyncio.Event()
         self.startup_error: Optional[str] = None
@@ -493,8 +542,22 @@ async def index():
     )
 
 
+async def _prune_stale_sessions() -> None:
+    now = time.time()
+    stale_ids = [
+        sid
+        for sid, br in list(ACTIVE_SESSIONS.items())
+        if br.stop_event.is_set() or (now - br.last_activity > SESSION_IDLE_TIMEOUT_SEC)
+    ]
+    for sid in stale_ids:
+        br = ACTIVE_SESSIONS.pop(sid, None)
+        if br:
+            await br.close()
+
+
 @app.get("/api/config")
-async def get_config():
+async def get_config(request: Request):
+    iap_info = _extract_iap_user(request)
     return JSONResponse(
         {
             "project": DEFAULT_PROJECT,
@@ -503,6 +566,8 @@ async def get_config():
             "fallback_model": FALLBACK_LIVE_MODEL,
             "voice": DEFAULT_VOICE,
             "default_system_prompt": DEFAULT_SYSTEM_PROMPT,
+            "iap_authenticated": iap_info["iap_authenticated"],
+            "authenticated_user": iap_info["email"],
             "active_sessions": len(ACTIVE_SESSIONS),
         }
     )
@@ -510,6 +575,14 @@ async def get_config():
 
 @app.post("/api/live/start")
 async def start_http_live_session(request: Request):
+    await _prune_stale_sessions()
+    if len(ACTIVE_SESSIONS) >= MAX_CONCURRENT_SESSIONS:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Nombre maximal de sessions Live simultanées atteint. Réessayez dans un instant."},
+        )
+
+    iap_info = _extract_iap_user(request)
     body = await request.json()
     project = body.get("project") or DEFAULT_PROJECT
     location = body.get("location") or DEFAULT_LOCATION
@@ -561,6 +634,8 @@ async def start_http_live_session(request: Request):
             "fallback_reason": bridge.fallback_reason,
             "voice": bridge.voice_name,
             "google_search_enabled": bridge.enable_google_search,
+            "authenticated_user": iap_info["email"],
+            "iap_authenticated": iap_info["iap_authenticated"],
             "sample_rate_in": 16000,
             "sample_rate_out": 24000,
         }
@@ -579,16 +654,22 @@ async def send_http_live_input(request: Request):
     if mtype == "text_in":
         text = (body.get("text") or "").strip()
         if text:
+            if len(text) > 16000:
+                return JSONResponse(status_code=413, content={"error": "Message texte trop volumineux."})
             await bridge.input_queue.put({"type": "text_in", "text": text})
     elif mtype == "audio_in":
         b64_data = body.get("data")
         if b64_data:
+            if len(b64_data) > MAX_BASE64_PAYLOAD_CHARS:
+                return JSONResponse(status_code=413, content={"error": "Payload audio_in trop volumineux."})
             pcm_bytes = base64.b64decode(b64_data)
             await bridge.input_queue.put({"type": "audio_in", "pcm_bytes": pcm_bytes})
     elif mtype == "image_in":
         b64_data = body.get("data")
         mime_type = body.get("mime_type") or "image/jpeg"
         if b64_data:
+            if len(b64_data) > MAX_BASE64_PAYLOAD_CHARS:
+                return JSONResponse(status_code=413, content={"error": "Payload image_in trop volumineux."})
             img_bytes = base64.b64decode(b64_data)
             await bridge.input_queue.put(
                 {"type": "image_in", "image_bytes": img_bytes, "mime_type": mime_type}

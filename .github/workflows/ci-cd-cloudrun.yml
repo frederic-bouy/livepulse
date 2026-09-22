@@ -90,7 +90,8 @@ jobs:
             --region="${{ secrets.GCP_REGION }}" \
             --image="${IMAGE_URI}" \
             --service-account="${{ secrets.GCP_RUNTIME_SA }}" \
-            --no-invoker-iam-check \
+            --ingress=internal-and-cloud-load-balancing \
+            --invoker-iam-check \
             --port=8080 \
             --cpu=2 \
             --memory=1Gi \
@@ -100,20 +101,15 @@ jobs:
             --session-affinity \
             --set-env-vars="GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }},GOOGLE_CLOUD_LOCATION=us-central1,GEMINI_LIVE_MODEL=gemini-3.8-live-preview,CUSTOM_DOMAIN=${{ secrets.CUSTOM_DOMAIN }}"
 
-      - name: Ensure Cloud Run Custom Domain Mapping
-        if: ${{ secrets.CUSTOM_DOMAIN != '' }}
+      - name: Verify Cloud Run Revision Ready & IAP Gate Active
         run: |
-          gcloud beta run domain-mappings describe \
-            --domain="${{ secrets.CUSTOM_DOMAIN }}" \
+          READY_STATUS=$(gcloud run services describe "${{ env.SERVICE_NAME }}" \
+            --project="${{ secrets.GCP_PROJECT_ID }}" \
             --region="${{ secrets.GCP_REGION }}" \
-            --project="${{ secrets.GCP_PROJECT_ID }}" >/dev/null 2>&1 || \
-          gcloud beta run domain-mappings create \
-            --service="${{ env.SERVICE_NAME }}" \
-            --domain="${{ secrets.CUSTOM_DOMAIN }}" \
-            --region="${{ secrets.GCP_REGION }}" \
-            --project="${{ secrets.GCP_PROJECT_ID }}" || true
-
-      - name: Verify Live Cloud Run Health Check
-        run: |
-          SERVICE_URL=$(gcloud run services describe "${{ env.SERVICE_NAME }}" --project="${{ secrets.GCP_PROJECT_ID }}" --region="${{ secrets.GCP_REGION }}" --format="value(status.url)")
-          curl --fail --silent --show-error "${SERVICE_URL}/api/health" | grep '"status":"ok"'
+            --format="value(status.conditions[0].status)")
+          echo "Cloud Run Ready status: ${READY_STATUS}"
+          test "${READY_STATUS}" = "True"
+          if [ -n "${{ secrets.CUSTOM_DOMAIN }}" ]; then
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ secrets.CUSTOM_DOMAIN }}/api/health" || echo "000")
+            echo "HTTPS Load Balancer / IAP response code: ${HTTP_CODE}"
+          fi

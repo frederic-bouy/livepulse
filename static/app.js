@@ -159,6 +159,36 @@
   checkSecureContext();
   updateGoogleSearchCapabilityUI();
 
+  const badgeIapUser = document.getElementById('badgeIapUser');
+  const badgeIapContainer = document.getElementById('badgeIapContainer');
+
+  async function loadServerConfig() {
+    try {
+      const resp = await fetch('/api/config');
+      if (!resp.ok) return;
+      const cfg = await resp.json();
+      if (cfg.project && badgeProject) {
+        badgeProject.textContent = cfg.project.toUpperCase();
+      }
+      if (badgeIapUser) {
+        if (cfg.iap_authenticated && cfg.authenticated_user) {
+          const shortUser = cfg.authenticated_user.split('@')[0].toUpperCase();
+          badgeIapUser.textContent = `🔒 ${shortUser}`;
+          if (badgeIapContainer) {
+            badgeIapContainer.title = `Authentifié via Google Cloud IAP : ${cfg.authenticated_user}`;
+          }
+        } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+          badgeIapUser.textContent = 'LOCAL DEV';
+        } else {
+          badgeIapUser.textContent = '🔒 IAP ACTIF';
+        }
+      }
+    } catch (_) {
+      // Ignore network error during initial config probe
+    }
+  }
+  loadServerConfig();
+
   function formatTime() {
     const now = new Date();
     return now.toLocaleTimeString('fr-FR', { hour12: false }) + '.' + Math.floor(now.getMilliseconds() / 100);
@@ -226,7 +256,7 @@
       srcSec.className = 'gs-section';
       srcSec.textContent = 'Source(s) : ';
       for (const src of sources) {
-        if (src.uri) {
+        if (src.uri && /^https?:\/\//i.test(src.uri)) {
           const a = document.createElement('a');
           a.className = 'gs-source-link';
           a.href = src.uri;
