@@ -15,10 +15,14 @@
   * Lecture audio `24 kHz` sans latence via file d'attente Web Audio et analyseur fréquentiel FFT.
 * **Avatar Vocal Interactif 60 FPS (`MOD. A // AVATAR VOCAL INTERACTIF`)** :
   * Portrait studio animé à 60 FPS au centre de l'écran OLED avec synchronisation labiale (*lip-sync*) pilotée par les formants vocaux (`24 kHz`), clignement naturel des yeux et bascule automatique du genre (**Féminin** : `Aoede`, `Kore`, `Leda`, `Zephyr` / **Masculin** : `Puck`, `Charon`, `Fenrir`, `Orus`).
+* **Co-Vision d'Écran en Temps Réel (`MOD. B // ÉCRAN PARTAGÉ` + Stratégie C + Pointeur Laser Orange)** :
+  * Partagez à chaud n'importe quelle fenêtre, onglet ou écran complet sans redémarrer la session audio (`🖥️ PARTAGER ÉCRAN`).
+  * **Stratégie Hybride C** : Envoie `1 FPS` (`1024p`) uniquement lorsque l'écran change de plus de `1 %` (`Smart Diff`), et injecte instantanément un cliché **Haute Définition (`1280p`)** dès que vous prenez la parole (`VOICE HD`), envoyez un message ou maintenez le clic enfoncé pour viser une zone avec le **pointeur laser orange interactif (`#FF5722`)**.
+  * Sélecteur d'affichage (`[📺 ÉCRAN | 📜 TRANSCRIPTION]`) dans l'en-tête `MOD. B` permettant de basculer à 100 % entre le moniteur d'écran dédié et le ruban de transcription.
 * **Outil Natif Google Search (`Grounding` Temps Réel)** :
   * Case à cocher sous les instructions système permettant d'activer ou de désactiver à chaud l'ancrage web `GoogleSearch()` pendant la session vocale, avec affichage en gris dans le ruban de transcription des requêtes exécutées et des sources web consultées.
 * **Reconfiguration à Chaud dans le Ruban Supérieur (`REGION`, `MODEL`, `VOICE`)** :
-  * Toute modification de la **Région** (`us-central1`, `europe-west1`, `europe-west4`, `europe-west9`), du **Modèle** (`gemini-3.8-live-preview`, `gemini-3.8-live`, `gemini-3.5-live-preview`, `gemini-3.1-live`, `gemini-live-2.5-flash-native-audio`) ou de la **Voix** redémarre automatiquement la session Live pour appliquer les nouveaux paramètres.
+  * Toute modification de la **Région** (`us-central1`, `europe-west1`, `europe-west4`, `europe-west9`), du **Modèle** (`gemini-3.8-live-preview`, `gemini-3.8-live-extended-thinking-preview`, `gemini-3.5-live-preview`, `gemini-3.1-live`, `gemini-live-2.5-flash-native-audio`) ou de la **Voix** redémarre automatiquement la session Live pour appliquer les nouveaux paramètres.
 * **Pont Hybride HTTP-Live & WebSocket** :
   * Compatible à 100 % avec les proxies d'entreprise et Google Cloud Run (avec affinité de session).
 

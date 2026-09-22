@@ -420,6 +420,15 @@ class LiveSessionBridge:
                                     mime_type="audio/pcm;rate=16000",
                                 )
                             )
+                        elif itype == "image_in":
+                            img_bytes = item["image_bytes"]
+                            mime_type = item.get("mime_type") or "image/jpeg"
+                            await session.send_realtime_input(
+                                video=types.Blob(
+                                    data=img_bytes,
+                                    mime_type=mime_type,
+                                )
+                            )
                         elif itype == "text_in":
                             user_text = (item.get("text") or "").strip()
                             if user_text:
@@ -574,6 +583,14 @@ async def send_http_live_input(request: Request):
         if b64_data:
             pcm_bytes = base64.b64decode(b64_data)
             await bridge.input_queue.put({"type": "audio_in", "pcm_bytes": pcm_bytes})
+    elif mtype == "image_in":
+        b64_data = body.get("data")
+        mime_type = body.get("mime_type") or "image/jpeg"
+        if b64_data:
+            img_bytes = base64.b64decode(b64_data)
+            await bridge.input_queue.put(
+                {"type": "image_in", "image_bytes": img_bytes, "mime_type": mime_type}
+            )
 
     events = await bridge.drain_events(wait_timeout=0.05)
     return JSONResponse({"ok": True, "events": events, "server_ts": int(time.time() * 1000)})

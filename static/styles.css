@@ -497,18 +497,24 @@ html, body {
   color: var(--accent-orange-dark);
 }
 
-/* Quick Signal & Model Selector Row */
+/* Quick Signal & Screen Share Utility Row */
 .utility-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: 1.1fr 1.1fr 0.85fr;
+  gap: 8px;
 }
 
 .mech-btn.compact-key {
-  padding: 9px 12px;
+  padding: 9px 8px;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+}
+
+.mech-btn.neutral-key.screen-sharing-active {
+  background-color: #23221F;
+  border-color: var(--accent-orange);
+  color: #FF6B3D;
+  box-shadow: 0 3px 0 #000000, 0 4px 10px rgba(255, 87, 34, 0.22);
 }
 
 /* Hardware Configuration Controls */
@@ -847,3 +853,201 @@ html, body {
 .google-search-entry .gs-source-link:hover {
   color: var(--ink-primary);
 }
+
+/* ============================================================================
+   MODULE B: VIEW MODE SWITCHER ([📺 ÉCRAN | 📜 TRANSCRIPTION]) & SCREEN MONITOR
+   ============================================================================ */
+
+.mod-b-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.mod-b-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.view-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--chassis-inset);
+  border: 1px solid var(--chassis-border-strong);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.view-mode-switcher.hidden {
+  display: none !important;
+}
+
+.view-switch-btn {
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ink-secondary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.14s ease;
+}
+
+.view-switch-btn:hover {
+  color: var(--ink-primary);
+}
+
+.view-switch-btn.active {
+  background-color: #1F201D;
+  color: #FF6B3D;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+
+/* Full-Panel Screen Share Monitor inside Module B */
+.screen-monitor-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 16px;
+  background-color: #121311;
+  border: 2px solid #2C2D29;
+  border-radius: 10px;
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+
+.screen-monitor-container.hidden {
+  display: none !important;
+}
+
+.screen-monitor-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background-color: #1A1B18;
+  border-bottom: 1px solid #2E302B;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #D8D4C8;
+}
+
+.screen-hud-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.screen-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #FF5722;
+  box-shadow: 0 0 8px #FF5722;
+  animation: pulseDot 1.4s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.86); }
+}
+
+.screen-hud-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.screen-stats-pill {
+  background-color: rgba(255, 87, 34, 0.14);
+  border: 1px solid rgba(255, 87, 34, 0.4);
+  color: #FF8A65;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.64rem;
+  font-weight: 600;
+}
+
+.screen-stop-mini-btn {
+  background-color: #2B221E;
+  border: 1px solid #FF5722;
+  color: #FF7043;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.screen-stop-mini-btn:hover {
+  background-color: #FF5722;
+  color: #FFFFFF;
+}
+
+.screen-canvas-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at center, #1C1E1A 0%, #0E0F0D 100%);
+  padding: 10px;
+  user-select: none;
+}
+
+#screenMonitorCanvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  cursor: crosshair;
+}
+
+.hidden-video {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.laser-hint-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(20, 21, 19, 0.86);
+  border: 1px solid rgba(255, 87, 34, 0.55);
+  color: #F4F1EA;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 5px 12px;
+  border-radius: 999px;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.laser-hint-badge.laser-active {
+  background-color: rgba(255, 87, 34, 0.92);
+  color: #FFFFFF;
+  font-weight: 700;
+}
+

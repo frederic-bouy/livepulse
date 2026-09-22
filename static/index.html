@@ -145,6 +145,9 @@
 
           <!-- Secondary Utility Switches -->
           <div class="utility-row">
+            <button type="button" class="mech-btn neutral-key compact-key" id="btnToggleScreenShare">
+              <span id="btnScreenShareLabel">🖥️ PARTAGER ÉCRAN</span>
+            </button>
             <button type="button" class="mech-btn neutral-key compact-key" id="btnTestGreeting">
               ▶ SIGNAL TEST ("BONJOUR")
             </button>
@@ -193,11 +196,44 @@
           </div>
         </aside>
 
-        <!-- RIGHT PANEL: MODULE B - TRANSCRIPTION TAPE -->
-        <section class="module-tape" aria-label="Ruban de Transcription en Direct">
-          <div class="module-header">
-            <span class="module-code">MOD. B // RUBAN DE TRANSCRIPTION TEMPS RÉEL</span>
-            <span class="module-status-tag" id="turnCounterTag">00 TOURS ENREGISTRÉS</span>
+        <!-- RIGHT PANEL: MODULE B - MONITEUR D'ÉCRAN & RUBAN DE TRANSCRIPTION -->
+        <section class="module-tape" aria-label="Moniteur d'Écran et Ruban de Transcription en Direct">
+          <div class="module-header mod-b-header">
+            <span class="module-code" id="modBHeaderTitle">MOD. B // RUBAN DE TRANSCRIPTION TEMPS RÉEL</span>
+            <div class="mod-b-controls">
+              <div class="view-mode-switcher hidden" id="viewModeSwitcher" role="tablist" aria-label="Sélecteur de vue Module B">
+                <button type="button" class="view-switch-btn active" id="btnViewScreen" role="tab" aria-selected="true">
+                  📺 ÉCRAN
+                </button>
+                <button type="button" class="view-switch-btn" id="btnViewTape" role="tab" aria-selected="false">
+                  📜 TRANSCRIPTION
+                </button>
+              </div>
+              <span class="module-status-tag" id="turnCounterTag">00 TOURS ENREGISTRÉS</span>
+            </div>
+          </div>
+
+          <!-- Dedicated Full-Panel Screen Share Monitor (Replaces Tape 100% when Screen Tab is active) -->
+          <div class="screen-monitor-container hidden" id="screenMonitorContainer">
+            <div class="screen-monitor-hud">
+              <div class="screen-hud-left">
+                <span class="screen-live-dot"></span>
+                <span id="screenHudTitle">CO-VISION GEMINI LIVE // MAINTENEZ LE CLIC POUR LE POINTEUR LASER ORANGE</span>
+              </div>
+              <div class="screen-hud-right">
+                <span class="screen-stats-pill" id="screenFrameStats">1 FPS SMART DIFF + HD VOIX</span>
+                <button type="button" class="screen-stop-mini-btn" id="btnStopScreenInline" title="Arrêter le partage d'écran">
+                  ⏹ ARRÊTER PARTAGE
+                </button>
+              </div>
+            </div>
+            <div class="screen-canvas-stage" id="screenCanvasStage">
+              <canvas id="screenMonitorCanvas" width="1280" height="720"></canvas>
+              <video id="screenCaptureVideo" autoplay playsinline muted class="hidden-video"></video>
+              <div class="laser-hint-badge" id="laserHintBadge">
+                🎯 Maintenez le clic gauche sur l'écran pour activer le pointeur laser orange
+              </div>
+            </div>
           </div>
 
           <div class="tape-container" id="tapeContainer" role="log" aria-live="polite">
@@ -205,7 +241,7 @@
               <div class="empty-icon-ring">REC</div>
               <h2>Console Prête pour l'Échange Vocal</h2>
               <p>
-                Appuyez sur <strong>DÉMARRER SESSION LIVE</strong> pour ouvrir le canal bidirectionnel Vertex AI et parler directement en français avec Gemini, ou utilisez <strong>SIGNAL TEST</strong>.
+                Appuyez sur <strong>DÉMARRER SESSION LIVE</strong> pour ouvrir le canal bidirectionnel Vertex AI et parler directement en français avec Gemini, ou utilisez <strong>🖥️ PARTAGER ÉCRAN</strong>.
               </p>
             </div>
           </div>
@@ -228,6 +264,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=7.1"></script>
+  <script src="/static/app.js?v=8.0"></script>
 </body>
 </html>

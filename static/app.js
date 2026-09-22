@@ -73,6 +73,20 @@
   const textComposerForm = document.getElementById('textComposerForm');
   const textComposerInput = document.getElementById('textComposerInput');
 
+  const btnToggleScreenShare = document.getElementById('btnToggleScreenShare');
+  const btnScreenShareLabel = document.getElementById('btnScreenShareLabel');
+  const btnStopScreenInline = document.getElementById('btnStopScreenInline');
+  const modBHeaderTitle = document.getElementById('modBHeaderTitle');
+  const viewModeSwitcher = document.getElementById('viewModeSwitcher');
+  const btnViewScreen = document.getElementById('btnViewScreen');
+  const btnViewTape = document.getElementById('btnViewTape');
+  const screenMonitorContainer = document.getElementById('screenMonitorContainer');
+  const screenMonitorCanvas = document.getElementById('screenMonitorCanvas');
+  const screenMonitorCtx = screenMonitorCanvas ? screenMonitorCanvas.getContext('2d') : null;
+  const screenCaptureVideo = document.getElementById('screenCaptureVideo');
+  const screenFrameStats = document.getElementById('screenFrameStats');
+  const laserHintBadge = document.getElementById('laserHintBadge');
+
   const secureContextBanner = document.getElementById('secureContextBanner');
   const httpsSwitchLink = document.getElementById('httpsSwitchLink');
   const copyChromeFlagBtn = document.getElementById('copyChromeFlagBtn');
@@ -86,6 +100,27 @@
   let audioSendInFlight = false;
   let pendingPcmChunks = [];
   let lastSearchSignature = '';
+
+  // Screen Sharing & Strategy C (1 FPS Smart Diff + HD on Speech/Laser) State
+  let isScreenSharing = false;
+  let screenStream = null;
+  let screenDiffTimer = null;
+  let activeModBView = 'tape'; // 'screen' | 'tape'
+  let lastVoiceHdFrameTs = 0;
+  let lastSentScreenTs = 0;
+  let imageSendInFlight = false;
+  const laserPointer = {
+    active: false,
+    normX: 0.5,
+    normY: 0.5,
+  };
+  const diffCanvas = document.createElement('canvas');
+  diffCanvas.width = 64;
+  diffCanvas.height = 36;
+  const diffCtx = diffCanvas.getContext('2d', { willReadFrequently: true });
+  let prevDiffPixels = null;
+  const encodeCanvas = document.createElement('canvas');
+  const encodeCtx = encodeCanvas.getContext('2d');
 
   // Audio Playback State (24kHz)
   let playbackCtx = null;
@@ -436,9 +471,17 @@
         }
         const inputData = event.inputBuffer.getChannelData(0);
         const pcm16 = new Int16Array(inputData.length);
+        let sumSq = 0;
         for (let i = 0; i < inputData.length; i++) {
           const s = Math.max(-1, Math.min(1, inputData[i]));
+          sumSq += s * s;
           pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+        const rms = Math.sqrt(sumSq / inputData.length);
+        // Strategy C: Send a 1280p HD snapshot immediately when user starts speaking
+        if (isScreenSharing && rms > 0.022 && performance.now() - lastVoiceHdFrameTs > 2200) {
+          lastVoiceHdFrameTs = performance.now();
+          sendScreenFrameToGemini(true, 'HD VOIX');
         }
         pendingPcmChunks.push(pcm16);
         flushPendingAudio();
@@ -468,6 +511,339 @@
       captureCtx = null;
       inputAnalyser = null;
     }
+  }
+
+  // ==========================================================================
+  // SCREEN SHARING + STRATEGY C (1 FPS SMART DIFF + HD) + ORANGE LASER POINTER
+  // ==========================================================================
+
+  function setModBView(viewMode) {
+    activeModBView = viewMode === 'screen' ? 'screen' : 'tape';
+    if (!screenMonitorContainer || !tapeContainer) return;
+
+    if (activeModBView === 'screen' && isScreenSharing) {
+      screenMonitorContainer.classList.remove('hidden');
+      tapeContainer.style.display = 'none';
+      if (modBHeaderTitle) {
+        modBHeaderTitle.textContent = 'MOD. B // MONITEUR CO-VISION TEMPS RÉEL';
+      }
+      if (btnViewScreen && btnViewTape) {
+        btnViewScreen.classList.add('active');
+        btnViewScreen.setAttribute('aria-selected', 'true');
+        btnViewTape.classList.remove('active');
+        btnViewTape.setAttribute('aria-selected', 'false');
+      }
+    } else {
+      screenMonitorContainer.classList.add('hidden');
+      tapeContainer.style.display = 'flex';
+      if (modBHeaderTitle) {
+        modBHeaderTitle.textContent = 'MOD. B // RUBAN DE TRANSCRIPTION TEMPS RÉEL';
+      }
+      if (btnViewScreen && btnViewTape) {
+        btnViewTape.classList.add('active');
+        btnViewTape.setAttribute('aria-selected', 'true');
+        btnViewScreen.classList.remove('active');
+        btnViewScreen.setAttribute('aria-selected', 'false');
+      }
+    }
+  }
+
+  function drawOrangeLaserPointer(targetCtx, width, height) {
+    if (!laserPointer.active) return;
+    const x = laserPointer.normX * width;
+    const y = laserPointer.normY * height;
+    const scale = Math.max(0.75, Math.min(1.6, width / 960));
+    const outerR = 28 * scale;
+    const ringR = 16 * scale;
+    const dotR = 5.5 * scale;
+
+    targetCtx.save();
+
+    // 1. Outer warm orange luminous halo
+    const grad = targetCtx.createRadialGradient(x, y, dotR * 0.5, x, y, outerR);
+    grad.addColorStop(0, 'rgba(255, 87, 34, 0.55)');
+    grad.addColorStop(0.6, 'rgba(255, 87, 34, 0.22)');
+    grad.addColorStop(1, 'rgba(255, 87, 34, 0)');
+    targetCtx.fillStyle = grad;
+    targetCtx.beginPath();
+    targetCtx.arc(x, y, outerR, 0, Math.PI * 2);
+    targetCtx.fill();
+
+    // 2. High-contrast white outer backing + bright orange target ring (#FF5722)
+    targetCtx.beginPath();
+    targetCtx.arc(x, y, ringR, 0, Math.PI * 2);
+    targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    targetCtx.lineWidth = 5.5 * scale;
+    targetCtx.stroke();
+
+    targetCtx.beginPath();
+    targetCtx.arc(x, y, ringR, 0, Math.PI * 2);
+    targetCtx.strokeStyle = '#FF5722';
+    targetCtx.lineWidth = 3.5 * scale;
+    targetCtx.stroke();
+
+    // 3. Crosshair precision ticks
+    const tickInner = ringR + 3 * scale;
+    const tickOuter = ringR + 10 * scale;
+    targetCtx.strokeStyle = '#FF5722';
+    targetCtx.lineWidth = 2.5 * scale;
+    targetCtx.beginPath();
+    targetCtx.moveTo(x - tickOuter, y);
+    targetCtx.lineTo(x - tickInner, y);
+    targetCtx.moveTo(x + tickInner, y);
+    targetCtx.lineTo(x + tickOuter, y);
+    targetCtx.moveTo(x, y - tickOuter);
+    targetCtx.lineTo(x, y - tickInner);
+    targetCtx.moveTo(x, y + tickInner);
+    targetCtx.lineTo(x, y + tickOuter);
+    targetCtx.stroke();
+
+    // 4. Intense center laser dot
+    targetCtx.beginPath();
+    targetCtx.arc(x, y, dotR, 0, Math.PI * 2);
+    targetCtx.fillStyle = '#FF5722';
+    targetCtx.fill();
+
+    targetCtx.beginPath();
+    targetCtx.arc(x, y, dotR * 0.45, 0, Math.PI * 2);
+    targetCtx.fillStyle = '#FFFFFF';
+    targetCtx.fill();
+
+    targetCtx.restore();
+  }
+
+  function computeScreenDiffPercent() {
+    if (!screenCaptureVideo || screenCaptureVideo.readyState < 2) return 0;
+    diffCtx.drawImage(screenCaptureVideo, 0, 0, diffCanvas.width, diffCanvas.height);
+    const current = diffCtx.getImageData(0, 0, diffCanvas.width, diffCanvas.height).data;
+    if (!prevDiffPixels) {
+      prevDiffPixels = new Uint8ClampedArray(current);
+      return 100;
+    }
+    let changedPixels = 0;
+    const totalPixels = diffCanvas.width * diffCanvas.height;
+    for (let i = 0; i < current.length; i += 4) {
+      const dr = Math.abs(current[i] - prevDiffPixels[i]);
+      const dg = Math.abs(current[i + 1] - prevDiffPixels[i + 1]);
+      const db = Math.abs(current[i + 2] - prevDiffPixels[i + 2]);
+      if (dr + dg + db > 36) {
+        changedPixels++;
+      }
+    }
+    prevDiffPixels.set(current);
+    return (changedPixels / totalPixels) * 100;
+  }
+
+  async function sendScreenFrameToGemini(isHighDef = false, reasonLabel = '1 FPS DIFF') {
+    if (!isScreenSharing || !isConnected || !activeSessionId) return;
+    if (!screenCaptureVideo || screenCaptureVideo.readyState < 2) return;
+    if (imageSendInFlight && !isHighDef) return;
+
+    const vw = screenCaptureVideo.videoWidth || 1280;
+    const vh = screenCaptureVideo.videoHeight || 720;
+    const maxDim = isHighDef ? 1280 : 960;
+    const scale = Math.min(1, maxDim / Math.max(vw, vh));
+    const targetW = Math.max(320, Math.round(vw * scale));
+    const targetH = Math.max(180, Math.round(vh * scale));
+
+    encodeCanvas.width = targetW;
+    encodeCanvas.height = targetH;
+    encodeCtx.drawImage(screenCaptureVideo, 0, 0, targetW, targetH);
+
+    // Burn the orange laser pointer onto the frame sent to Gemini if held down
+    drawOrangeLaserPointer(encodeCtx, targetW, targetH);
+
+    const quality = isHighDef ? 0.88 : 0.74;
+    const dataUrl = encodeCanvas.toDataURL('image/jpeg', quality);
+    const base64Jpeg = dataUrl.split(',')[1];
+    if (!base64Jpeg) return;
+
+    lastSentScreenTs = performance.now();
+    if (screenFrameStats) {
+      screenFrameStats.textContent = `${targetW}×${targetH} • ${reasonLabel}`;
+    }
+
+    imageSendInFlight = true;
+    try {
+      const resp = await fetch('/api/live/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: activeSessionId,
+          type: 'image_in',
+          mime_type: 'image/jpeg',
+          data: base64Jpeg,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data.events)) {
+          for (const ev of data.events) {
+            handleServerEvent(ev);
+          }
+        }
+      }
+    } catch (_) {
+      // Ignore transient frame upload error
+    } finally {
+      imageSendInFlight = false;
+    }
+  }
+
+  async function startScreenShare() {
+    if (isScreenSharing) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      appendSystemLog("Le partage d'écran (getDisplayMedia) n'est pas supporté sur ce navigateur ou contexte HTTP.");
+      return;
+    }
+
+    try {
+      screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          frameRate: { ideal: 15, max: 30 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+
+      const videoTrack = screenStream.getVideoTracks()[0];
+      if (!videoTrack) {
+        throw new Error("Aucune piste vidéo détectée dans le partage d'écran.");
+      }
+
+      videoTrack.onended = () => {
+        stopScreenShare();
+      };
+
+      screenCaptureVideo.srcObject = screenStream;
+      await screenCaptureVideo.play();
+
+      isScreenSharing = true;
+      prevDiffPixels = null;
+
+      if (btnToggleScreenShare) {
+        btnToggleScreenShare.classList.add('screen-sharing-active');
+      }
+      if (btnScreenShareLabel) {
+        btnScreenShareLabel.textContent = '⏹ ARRÊTER ÉCRAN';
+      }
+      if (viewModeSwitcher) {
+        viewModeSwitcher.classList.remove('hidden');
+      }
+
+      // Switch MOD. B 100% to the dedicated Screen Monitor
+      setModBView('screen');
+
+      appendSystemLog(
+        "🖥️ Partage d'écran activé (Stratégie C : 1 FPS Smart Diff + Capture HD 1280p à la voix + Pointeur Laser Orange au clic maintenu)."
+      );
+
+      // Send immediate initial HD snapshot if Live session is already connected
+      if (isConnected && activeSessionId) {
+        await sendScreenFrameToGemini(true, 'HD INITIAL');
+      }
+
+      // Start 1 FPS Smart Diff background loop
+      if (screenDiffTimer) clearInterval(screenDiffTimer);
+      screenDiffTimer = setInterval(() => {
+        if (!isScreenSharing || !isConnected || !activeSessionId) return;
+        const diffPct = computeScreenDiffPercent();
+        const elapsedSinceLast = performance.now() - lastSentScreenTs;
+        if (laserPointer.active) {
+          sendScreenFrameToGemini(true, 'LASER POINTEUR HD');
+        } else if (diffPct >= 1.0 || elapsedSinceLast > 5000) {
+          sendScreenFrameToGemini(false, `1 FPS DIFF (${diffPct.toFixed(1)}%)`);
+        }
+      }, 1000);
+    } catch (err) {
+      if (err && err.name !== 'NotAllowedError') {
+        appendSystemLog(`Partage d'écran annulé ou indisponible : ${err.message}`);
+      }
+      stopScreenShare();
+    }
+  }
+
+  function stopScreenShare() {
+    const wasSharing = isScreenSharing;
+    isScreenSharing = false;
+    laserPointer.active = false;
+    prevDiffPixels = null;
+
+    if (screenDiffTimer) {
+      clearInterval(screenDiffTimer);
+      screenDiffTimer = null;
+    }
+    if (screenStream) {
+      screenStream.getTracks().forEach((t) => t.stop());
+      screenStream = null;
+    }
+    if (screenCaptureVideo) {
+      screenCaptureVideo.srcObject = null;
+    }
+    if (btnToggleScreenShare) {
+      btnToggleScreenShare.classList.remove('screen-sharing-active');
+    }
+    if (btnScreenShareLabel) {
+      btnScreenShareLabel.textContent = '🖥️ PARTAGER ÉCRAN';
+    }
+    if (viewModeSwitcher) {
+      viewModeSwitcher.classList.add('hidden');
+    }
+    setModBView('tape');
+
+    if (wasSharing) {
+      appendSystemLog("⏹ Partage d'écran arrêté — Retour au ruban de transcription.");
+    }
+  }
+
+  function updateLaserCoordsFromEvent(evt) {
+    if (!screenMonitorCanvas) return;
+    const rect = screenMonitorCanvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const clientX = evt.touches && evt.touches[0] ? evt.touches[0].clientX : evt.clientX;
+    const clientY = evt.touches && evt.touches[0] ? evt.touches[0].clientY : evt.clientY;
+    laserPointer.normX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    laserPointer.normY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+  }
+
+  if (screenMonitorCanvas) {
+    const activateLaser = (evt) => {
+      if (!isScreenSharing) return;
+      evt.preventDefault();
+      laserPointer.active = true;
+      updateLaserCoordsFromEvent(evt);
+      if (laserHintBadge) {
+        laserHintBadge.classList.add('laser-active');
+        laserHintBadge.textContent = '🔴 POINTEUR LASER ORANGE ACTIF — TRANSMIS EN HD À GEMINI';
+      }
+      sendScreenFrameToGemini(true, 'LASER POINTEUR HD');
+    };
+
+    const moveLaser = (evt) => {
+      if (!laserPointer.active || !isScreenSharing) return;
+      updateLaserCoordsFromEvent(evt);
+    };
+
+    const releaseLaser = () => {
+      if (!laserPointer.active) return;
+      laserPointer.active = false;
+      if (laserHintBadge) {
+        laserHintBadge.classList.remove('laser-active');
+        laserHintBadge.textContent = '🎯 Maintenez le clic gauche sur l\'écran pour activer le pointeur laser orange';
+      }
+      if (isScreenSharing && isConnected) {
+        sendScreenFrameToGemini(false, 'FIN LASER');
+      }
+    };
+
+    screenMonitorCanvas.addEventListener('mousedown', activateLaser);
+    window.addEventListener('mousemove', moveLaser);
+    window.addEventListener('mouseup', releaseLaser);
+    screenMonitorCanvas.addEventListener('mouseleave', releaseLaser);
+    screenMonitorCanvas.addEventListener('touchstart', activateLaser, { passive: false });
+    screenMonitorCanvas.addEventListener('touchmove', moveLaser, { passive: false });
+    window.addEventListener('touchend', releaseLaser);
   }
 
   function handleServerEvent(msg) {
@@ -635,6 +1011,10 @@
       await startMicrophoneCapture();
       scopeModeLabel.textContent = '● ÉCOUTE EN DIRECT // PARLEZ AU MICRO';
 
+      if (isScreenSharing) {
+        await sendScreenFrameToGemini(true, 'HD INIT SESSION');
+      }
+
       runPollLoop(activeSessionId);
 
       if (autoGreetingText) {
@@ -716,6 +1096,11 @@
       return;
     }
 
+    // Strategy C: If screen sharing is active, send a fresh HD snapshot right before the question
+    if (isScreenSharing) {
+      await sendScreenFrameToGemini(true, 'HD QUESTION TEXTE');
+    }
+
     stopAllPlayback();
     hideEmptyState();
     const userItem = createEntryElement('user', 'OPÉRATEUR // MESSAGE DIRECT');
@@ -756,6 +1141,34 @@
       startSession();
     }
   });
+
+  if (btnToggleScreenShare) {
+    btnToggleScreenShare.addEventListener('click', () => {
+      if (isScreenSharing) {
+        stopScreenShare();
+      } else {
+        startScreenShare();
+      }
+    });
+  }
+
+  if (btnStopScreenInline) {
+    btnStopScreenInline.addEventListener('click', () => {
+      stopScreenShare();
+    });
+  }
+
+  if (btnViewScreen) {
+    btnViewScreen.addEventListener('click', () => {
+      setModBView('screen');
+    });
+  }
+
+  if (btnViewTape) {
+    btnViewTape.addEventListener('click', () => {
+      setModBView('tape');
+    });
+  }
 
   btnToggleMute.addEventListener('click', () => {
     if (!isConnected) return;
@@ -891,6 +1304,21 @@
 
   function renderScope() {
     requestAnimationFrame(renderScope);
+
+    // Render 60 FPS Screen Monitor + Hold-to-Point Orange Laser Pointer if active
+    if (isScreenSharing && screenMonitorCtx && screenCaptureVideo && screenCaptureVideo.readyState >= 2) {
+      const vw = screenCaptureVideo.videoWidth || 1280;
+      const vh = screenCaptureVideo.videoHeight || 720;
+      const scale = Math.min(1, 1280 / Math.max(vw, vh));
+      const cw = Math.max(320, Math.round(vw * scale));
+      const ch = Math.max(180, Math.round(vh * scale));
+      if (screenMonitorCanvas.width !== cw || screenMonitorCanvas.height !== ch) {
+        screenMonitorCanvas.width = cw;
+        screenMonitorCanvas.height = ch;
+      }
+      screenMonitorCtx.drawImage(screenCaptureVideo, 0, 0, cw, ch);
+      drawOrangeLaserPointer(screenMonitorCtx, cw, ch);
+    }
 
     const now = performance.now();
     const w = scopeCanvas.width;

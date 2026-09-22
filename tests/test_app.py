@@ -42,9 +42,13 @@ def test_ui_branding_and_selectors():
     assert 'id="modelSelect"' in html
     assert 'id="voiceSelect"' in html
     assert "gemini-3.8-live-preview" in html
-    assert "gemini-3.8-live" in html
+    assert "gemini-3.8-live-extended-thinking-preview" in html
     assert "gemini-3.1-live" in html
     assert 'id="googleSearchToggle"' in html
+    assert 'id="btnToggleScreenShare"' in html
+    assert 'id="viewModeSwitcher"' in html
+    assert 'id="screenMonitorContainer"' in html
+    assert 'id="screenMonitorCanvas"' in html
     # Verify carrierNotice banner was removed
     assert 'id="carrierNotice"' not in html
 
@@ -136,6 +140,20 @@ def test_live_session_lifecycle_mocked():
             json={"session_id": sid, "type": "text_in", "text": "Bonjour"},
         )
         assert send_resp.status_code == 200
+
+        import base64
+        dummy_jpeg_b64 = base64.b64encode(b"\xff\xd8\xff\xe0dummy_jpeg").decode("ascii")
+        img_resp = client.post(
+            "/api/live/send",
+            json={
+                "session_id": sid,
+                "type": "image_in",
+                "mime_type": "image/jpeg",
+                "data": dummy_jpeg_b64,
+            },
+        )
+        assert img_resp.status_code == 200
+        assert img_resp.json()["ok"] is True
 
         stop_resp = client.post("/api/live/stop", json={"session_id": sid})
         assert stop_resp.status_code == 200
