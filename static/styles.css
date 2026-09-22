@@ -1051,3 +1051,73 @@ html, body {
   font-weight: 700;
 }
 
+/* ============================================================================
+   IAP IDENTITY BADGE & LOGOUT DROPDOWN MENU
+   ============================================================================ */
+
+.iap-badge-wrapper {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.iap-badge-wrapper:hover {
+  border-color: var(--accent-orange);
+}
+
+.iap-caret {
+  font-size: 0.65rem;
+  color: var(--ink-muted);
+  margin-left: 2px;
+}
+
+.iap-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  min-width: 260px;
+  background-color: #1A1B18;
+  border: 1px solid #3C3E38;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.48);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.iap-dropdown-menu.hidden {
+  display: none !important;
+}
+
+.iap-dropdown-email {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #E2DFD7;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2F312C;
+  word-break: break-all;
+}
+
+.iap-logout-btn {
+  width: 100%;
+  background-color: #FF521B;
+  border: 1px solid #FF7043;
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 7px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.15s ease;
+}
+
+.iap-logout-btn:hover {
+  background-color: #E0410E;
+}
+
+

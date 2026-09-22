@@ -161,6 +161,37 @@
 
   const badgeIapUser = document.getElementById('badgeIapUser');
   const badgeIapContainer = document.getElementById('badgeIapContainer');
+  const iapDropdownMenu = document.getElementById('iapDropdownMenu');
+  const iapDropdownEmail = document.getElementById('iapDropdownEmail');
+  const btnIapLogout = document.getElementById('btnIapLogout');
+
+  if (badgeIapContainer && iapDropdownMenu) {
+    badgeIapContainer.addEventListener('click', (e) => {
+      if (e.target === btnIapLogout) return;
+      iapDropdownMenu.classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!badgeIapContainer.contains(e.target)) {
+        iapDropdownMenu.classList.add('hidden');
+      }
+    });
+  }
+
+  if (btnIapLogout) {
+    btnIapLogout.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (iapDropdownMenu) iapDropdownMenu.classList.add('hidden');
+      try {
+        if (isConnected) {
+          await stopSession();
+        }
+      } catch (_) {
+        // Ignore error before redirect
+      }
+      // Redirect to Google Cloud IAP's built-in cookie-clearing endpoint
+      window.location.href = '/?gcp-iap-mode=CLEAR_LOGIN_COOKIE';
+    });
+  }
 
   async function loadServerConfig() {
     try {
@@ -174,13 +205,22 @@
         if (cfg.iap_authenticated && cfg.authenticated_user) {
           const shortUser = cfg.authenticated_user.split('@')[0].toUpperCase();
           badgeIapUser.textContent = `🔒 ${shortUser}`;
+          if (iapDropdownEmail) {
+            iapDropdownEmail.textContent = `Connecté : ${cfg.authenticated_user}`;
+          }
           if (badgeIapContainer) {
-            badgeIapContainer.title = `Authentifié via Google Cloud IAP : ${cfg.authenticated_user}`;
+            badgeIapContainer.title = `Connecté via Google Cloud IAP (${cfg.authenticated_user}) — Cliquer pour se déconnecter`;
           }
         } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
           badgeIapUser.textContent = 'LOCAL DEV';
+          if (iapDropdownEmail) {
+            iapDropdownEmail.textContent = 'Mode développement local (sans IAP)';
+          }
         } else {
           badgeIapUser.textContent = '🔒 IAP ACTIF';
+          if (iapDropdownEmail) {
+            iapDropdownEmail.textContent = 'Session protégée par Google Cloud IAP';
+          }
         }
       }
     } catch (_) {
