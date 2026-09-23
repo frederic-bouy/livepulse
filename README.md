@@ -16,21 +16,22 @@
 
 ## ✨ Key Features
 
-* **Real-Time Bidirectional Voice Streaming (`16 kHz PCM IN` / `24 kHz PCM OUT`)**:
-  * Web Audio API `16 kHz` microphone capture with echo cancellation, noise suppression, and natural real-time interruption (*Barge-in*) detection.
-  * Zero-latency `24 kHz` audio playback with Web Audio scheduling and FFT frequency analysis.
-* **60 FPS Interactive Voice Avatar (`MOD. A // AVATAR VOCAL INTERACTIF`)**:
-  * 60 FPS studio portrait rendered at the center of the OLED display with real-time formant-driven lip-sync (`24 kHz`), natural eye blinking, and automatic gender switching (**Female**: `Aoede`, `Kore`, `Leda`, `Zephyr` / **Male**: `Puck`, `Charon`, `Fenrir`, `Orus`).
-* **Real-Time Screen Co-Vision (`MOD. B // ÉCRAN PARTAGÉ` + Strategy C + Orange Laser Pointer)**:
-  * Share any window, browser tab, or full screen live without restarting the audio session (`🖥️ PARTAGER ÉCRAN`).
-  * **Hybrid Strategy C**: Streams `1 FPS` (`1024p`) only when visual changes exceed `1%` (`Smart Diff`), and automatically injects an instant `1280p HD` frame as soon as you start speaking (`VOICE HD`), send a text message, or hold the mouse button down to point with the **interactive orange laser pointer (`#FF5722`)**.
+* **🖥️ Real-Time Multimodal Screen Co-Vision & Interactive Laser Pointer (`MOD. B // ÉCRAN PARTAGÉ`)**:
+  * Powered by Gemini's native multimodal Live capabilities, share any window, IDE, dashboard, or browser tab mid-conversation (`🖥️ PARTAGER ÉCRAN`) without restarting the audio session.
+  * **Voice-Activated 1280p HD Vision (Hybrid Strategy C)**: Streams `1 FPS` (`1024p`) only when visual changes exceed `1%` (`Smart Diff` — zero wasted bandwidth or tokens on static screens), and automatically injects an instant `1280p` High-Definition frame the millisecond you start speaking (`VOICE HD`), send a text note, or hold left-click to point with the **interactive orange laser pointer (`#FF5722`)**.
   * Includes a `MOD. B` header switcher (`[📺 ÉCRAN | 📜 TRANSCRIPTION]`) to toggle 100% between the live screen monitor and the conversation transcript tape.
-* **Native Google Search Tool (Real-Time Web Grounding)**:
-  * Interactive checkbox below the system instructions allowing you to enable or disable native `GoogleSearch()` web grounding on the fly, rendering executed search queries and cited web sources in gray directly inside the transcript tape.
-* **Hot-Swappable Top Ribbon Controls (`REGION`, `MODEL`, `VOICE`)**:
-  * Changing the **Region** (`us-central1`, `europe-west1`, `europe-west4`, `europe-west9`), **Model** (`gemini-3.8-live-preview`, `gemini-3.8-live-extended-thinking-preview`, `gemini-3.5-live-preview`, `gemini-3.1-live`, `gemini-live-2.5-flash-native-audio`), or **Voice** automatically restarts the active Live session to apply the new configuration immediately.
-* **Hybrid HTTP-Live & WebSocket Bridge**:
-  * 100% compatible with corporate HTTP proxies and Google Cloud Run (with session affinity).
+* **🧠 Live Deep Reasoning with `gemini-3.8-live-thinking-preview`**:
+  * Switch on the fly to `gemini-3.8-live-thinking-preview` (`gemini-3.8-live-extended-thinking-preview`) to combine sub-second spoken interaction and live screen co-vision with multi-step analytical thinking—built for live architecture reviews, debugging stack traces on screen, and complex data analysis.
+* **🎙️ Ultra-Low-Latency Bidirectional Voice & Natural Barge-In (`16 kHz PCM IN` / `24 kHz PCM OUT`)**:
+  * Web Audio API `16 kHz` microphone capture with echo cancellation, noise suppression, and natural real-time human interruption (*Barge-in*) detection.
+  * Zero-latency `24 kHz` audio playback with Web Audio scheduling and real-time FFT frequency analysis.
+* **👤 60 FPS Formant-Driven Interactive Voice Avatar (`MOD. A // AVATAR VOCAL INTERACTIF`)**:
+  * 60 FPS studio portrait rendered at the center of the display with real-time formant-driven lip-sync (`24 kHz`), natural eye blinking, and automatic persona/gender switching across 8 studio voices (**Female**: `Aoede`, `Kore`, `Leda`, `Zephyr` / **Male**: `Puck`, `Charon`, `Fenrir`, `Orus`).
+* **🌐 Native Google Search Tool (Real-Time Web Grounding)**:
+  * Interactive toggle below the system instructions allowing you to enable or disable native `GoogleSearch()` web grounding on the fly, rendering executed search queries and cited web sources directly inside the transcript tape.
+* **🎛️ Hot-Swappable Top Ribbon Controls (`REGION`, `MODEL`, `VOICE`) & Enterprise Cloud Run Bridge**:
+  * Changing the **Region** (`us-central1`, `europe-west4`, `asia-northeast1`), **Model** (`gemini-3.8-live-preview`, `gemini-3.8-live-thinking-preview`, `gemini-3.8-live`, `gemini-3.5-live-preview`, `gemini-3.5-live-thinking`, `gemini-3.1-live`, `gemini-2.5-flash-live`), or **Voice** automatically restarts the active Live session to apply the new configuration immediately.
+  * **Hybrid HTTP-Live & WebSocket Bridge**: 100% compatible with corporate HTTP proxies, Google Cloud Run (with session affinity), and Google Cloud Identity-Aware Proxy (IAP).
 
 ---
 

@@ -16,21 +16,22 @@
 
 ## ✨ Fonctionnalités Principales
 
-* **Streaming Vocal Bidirectionnel Temps Réel (`16 kHz PCM IN` / `24 kHz PCM OUT`)** :
-  * Capture microphone Web Audio API à `16 kHz` avec annulation d'écho, suppression de bruit et détection d'interruption naturelle (*Barge-in* temps réel).
-  * Lecture audio `24 kHz` sans latence via file d'attente Web Audio et analyseur fréquentiel FFT.
-* **Avatar Vocal Interactif 60 FPS (`MOD. A // AVATAR VOCAL INTERACTIF`)** :
-  * Portrait studio animé à 60 FPS au centre de l'écran OLED avec synchronisation labiale (*lip-sync*) pilotée par les formants vocaux (`24 kHz`), clignement naturel des yeux et bascule automatique du genre (**Féminin** : `Aoede`, `Kore`, `Leda`, `Zephyr` / **Masculin** : `Puck`, `Charon`, `Fenrir`, `Orus`).
-* **Co-Vision d'Écran en Temps Réel (`MOD. B // ÉCRAN PARTAGÉ` + Stratégie C + Pointeur Laser Orange)** :
-  * Partagez à chaud n'importe quelle fenêtre, onglet ou écran complet sans redémarrer la session audio (`🖥️ PARTAGER ÉCRAN`).
-  * **Stratégie Hybride C** : Envoie `1 FPS` (`1024p`) uniquement lorsque l'écran change de plus de `1 %` (`Smart Diff`), et injecte instantanément un cliché **Haute Définition (`1280p`)** dès que vous prenez la parole (`VOICE HD`), envoyez un message ou maintenez le clic enfoncé pour viser une zone avec le **pointeur laser orange interactif (`#FF5722`)**.
-  * Sélecteur d'affichage (`[📺 ÉCRAN | 📜 TRANSCRIPTION]`) dans l'en-tête `MOD. B` permettant de basculer à 100 % entre le moniteur d'écran dédié et le ruban de transcription.
-* **Outil Natif Google Search (`Grounding` Temps Réel)** :
-  * Case à cocher sous les instructions système permettant d'activer ou de désactiver à chaud l'ancrage web `GoogleSearch()` pendant la session vocale, avec affichage en gris dans le ruban de transcription des requêtes exécutées et des sources web consultées.
-* **Reconfiguration à Chaud dans le Ruban Supérieur (`REGION`, `MODEL`, `VOICE`)** :
-  * Toute modification de la **Région** (`us-central1`, `europe-west1`, `europe-west4`, `europe-west9`), du **Modèle** (`gemini-3.8-live-preview`, `gemini-3.8-live-extended-thinking-preview`, `gemini-3.5-live-preview`, `gemini-3.1-live`, `gemini-live-2.5-flash-native-audio`) ou de la **Voix** redémarre automatiquement la session Live pour appliquer les nouveaux paramètres.
-* **Pont Hybride HTTP-Live & WebSocket** :
-  * Compatible à 100 % avec les proxies d'entreprise et Google Cloud Run (avec affinité de session).
+* **🖥️ Co-Vision Multimodale d'Écran en Temps Réel & Pointeur Laser Interactif (`MOD. B // ÉCRAN PARTAGÉ`)** :
+  * Propulsé par les capacités multimodales Live natives de Gemini, partagez n'importe quelle fenêtre, IDE, tableau de bord ou onglet de navigateur en pleine conversation (`🖥️ PARTAGER ÉCRAN`) sans redémarrer la session audio.
+  * **Vision HD 1280p Activée par la Voix (Stratégie Hybride C)** : Diffuse à `1 FPS` (`1024p`) uniquement lorsque les changements visuels dépassent `1 %` (`Smart Diff` — zéro bande passante ni token gaspillés sur les écrans statiques), et injecte automatiquement une image Haute Définition `1280p` à la milliseconde où vous commencez à parler (`VOICE HD`), envoyez une note textuelle, ou maintenez le clic gauche enfoncé pour pointer avec le **pointeur laser orange interactif (`#FF5722`)**.
+  * Inclut un sélecteur dans l'en-tête `MOD. B` (`[📺 ÉCRAN | 📜 TRANSCRIPTION]`) pour basculer à 100 % entre le moniteur d'écran en direct et le ruban de transcription de la conversation.
+* **🧠 Raisonnement Profond en Direct avec `gemini-3.8-live-thinking-preview`** :
+  * Basculez à la volée vers `gemini-3.8-live-thinking-preview` (`gemini-3.8-live-extended-thinking-preview`) pour combiner l'interaction vocale sub-seconde et la co-vision d'écran en direct avec une réflexion analytique multi-étapes — conçu pour les revues d'architecture en direct, le débogage de stack traces à l'écran et l'analyse de données complexes.
+* **🎙️ Voix Bidirectionnelle Ultra-Basse Latence & Barge-In Naturel (`16 kHz PCM IN` / `24 kHz PCM OUT`)** :
+  * Capture microphone Web Audio API `16 kHz` avec annulation d'écho, suppression de bruit et détection d'interruption humaine naturelle en temps réel (*Barge-in*).
+  * Lecture audio `24 kHz` sans latence avec planification Web Audio et analyse fréquentielle FFT en temps réel.
+* **👤 Avatar Vocal Interactif 60 FPS Piloté par les Formants (`MOD. A // AVATAR VOCAL INTERACTIF`)** :
+  * Portrait studio 60 FPS affiché au centre de l'écran avec synchronisation labiale (*lip-sync*) temps réel pilotée par les formants (`24 kHz`), clignement naturel des yeux et bascule automatique de persona/genre parmi 8 voix studio (**Féminin** : `Aoede`, `Kore`, `Leda`, `Zephyr` / **Masculin** : `Puck`, `Charon`, `Fenrir`, `Orus`).
+* **🌐 Outil Natif Google Search (Ancrage Web Temps Réel)** :
+  * Interrupteur interactif sous les instructions système permettant d'activer ou de désactiver à la volée l'ancrage web natif `GoogleSearch()`, en affichant les requêtes de recherche exécutées et les sources web citées directement dans le ruban de transcription.
+* **🎛️ Contrôles Supérieurs Reconfigurables à Chaud (`REGION`, `MODEL`, `VOICE`) & Pont Cloud Run Entreprise** :
+  * Le changement de **Région** (`us-central1`, `europe-west4`, `asia-northeast1`), de **Modèle** (`gemini-3.8-live-preview`, `gemini-3.8-live-thinking-preview`, `gemini-3.8-live`, `gemini-3.5-live-preview`, `gemini-3.5-live-thinking`, `gemini-3.1-live`, `gemini-2.5-flash-live`) ou de **Voix** redémarre automatiquement la session Live active pour appliquer la nouvelle configuration immédiatement.
+  * **Pont Hybride HTTP-Live & WebSocket** : 100 % compatible avec les proxies HTTP d'entreprise, Google Cloud Run (avec affinité de session) et Google Cloud Identity-Aware Proxy (IAP).
 
 ---
 
