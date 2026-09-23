@@ -1,12 +1,16 @@
 > 🌐 **Language / Langue :** **🇬🇧 English** | [🇫🇷 Français](./README.fr.md)
 
-# LivePulse — Vertex AI Gemini Live Real-Time Voice Console
+# 🎛️ LivePulse — Live Real-Time Voice Console
 
-**LivePulse** is a real-time bidirectional voice console connected to the **Google Cloud Vertex AI Gemini Live API** (`gemini-3.8-live-preview`, `gemini-3.8-live`, `gemini-3.5-live-preview`, `gemini-3.1-live`), designed with a tactile hardware aesthetic inspired by **Braun / Dieter Rams / Teenage Engineering** industrial design.
+**The AI Co-Pilot with Ears, Eyes, and Live Deep Reasoning — Powered by the Vertex AI Gemini Multimodal Live API.**
+
+*Stop typing prompts. Start talking—and showing.*
+
+**LivePulse** is a next-generation, full-duplex **Live Real-Time Voice & Vision Console** powered by the **Google Cloud Vertex AI Gemini Multimodal Live API** (`gemini-3.8-live-preview`, `gemini-3.8-live-thinking-preview`, `gemini-3.8-live`, `gemini-3.5-live-preview`, `gemini-3.1-live`). It transforms AI interaction from turn-based text chat into a fluid, multisensory collaboration: LivePulse hears your voice without latency, sees your screen in High Definition, follows your interactive laser pointer, grounds its answers on Google Search, and reasons deeply in real time.
 
 ![LivePulse Real-Time Voice Console](./static/livepulse_console_demo.png)
 
-**🚀 You can test it live here : [https://livepulse.fred-demo.net/](https://livepulse.fred-demo.net/)**
+**🚀 Experience it live here: [https://livepulse.fred-demo.net/](https://livepulse.fred-demo.net/)**
 
 ---
 
