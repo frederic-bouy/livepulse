@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 270" width="100%" height="100%" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">
+  <defs>
+    <marker id="arrow-dark" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2A2926"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#1F9D55"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#FF5722"/>
+    </marker>
+    <filter id="card-shadow" x="-3%" y="-3%" width="106%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Outer Chassis Background -->
+  <rect x="0" y="0" width="1120" height="270" rx="12" fill="#ECE8DF" stroke="#C8C2B4" stroke-width="2"/>
+
+  <!-- Top Header Bar -->
+  <rect x="16" y="14" width="1088" height="34" rx="6" fill="#181818"/>
+  <circle cx="34" cy="31" r="6" fill="#1F9D55"/>
+  <text x="50" y="36" fill="#F4F1EA" font-size="12" font-weight="700" letter-spacing="1.2">GITHUB ACTIONS CI/CD PIPELINE // ZERO-TRUST QUALITY GATE &amp; CLOUD RUN DEPLOYMENT</text>
+  <text x="1088" y="36" fill="#9E9A90" font-size="11" text-anchor="end">.github/workflows/ci-cd-cloudrun.yml</text>
+
+  <!-- Trigger Node -->
+  <g filter="url(#card-shadow)">
+    <rect x="18" y="102" width="142" height="96" rx="6" fill="#181818" stroke="#2A2926" stroke-width="1.5"/>
+    <text x="89" y="132" fill="#FF5722" font-size="11.5" font-weight="700" text-anchor="middle">GIT TRIGGER</text>
+    <text x="89" y="152" fill="#F4F1EA" font-size="10.5" text-anchor="middle">Push / PR on main</text>
+    <text x="89" y="170" fill="#9E9A90" font-size="9.5" text-anchor="middle">or manual dispatch</text>
+  </g>
+
+  <!-- SUBGRAPH 1: JOB 1 CI -->
+  <rect x="184" y="62" width="430" height="190" rx="8" fill="#F7F4EC" stroke="#1F9D55" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="198" y="84" fill="#1F9D55" font-size="11" font-weight="700" letter-spacing="0.8">JOB 1 // CONTINUOUS INTEGRATION (QUALITY &amp; SECURITY GATE)</text>
+
+  <!-- Step 1: Pytest -->
+  <g filter="url(#card-shadow)">
+    <rect x="198" y="102" width="124" height="128" rx="6" fill="#FFFFFF" stroke="#2A2926" stroke-width="1.5"/>
+    <text x="260" y="130" fill="#181818" font-size="11.5" font-weight="700" text-anchor="middle">1. Pytest</text>
+    <text x="260" y="150" fill="#5A564E" font-size="9.8" text-anchor="middle">Functional API,</text>
+    <text x="260" y="165" fill="#5A564E" font-size="9.8" text-anchor="middle">IAP headers &amp;</text>
+    <text x="260" y="180" fill="#5A564E" font-size="9.8" text-anchor="middle">UI asset checks</text>
+    <text x="260" y="210" fill="#1F9D55" font-size="9.5" font-weight="700" text-anchor="middle">✓ 7 PASSED</text>
+  </g>
+
+  <!-- Step 2: Bandit SAST -->
+  <g filter="url(#card-shadow)">
+    <rect x="338" y="102" width="124" height="128" rx="6" fill="#FFFFFF" stroke="#2A2926" stroke-width="1.5"/>
+    <text x="400" y="130" fill="#181818" font-size="11.5" font-weight="700" text-anchor="middle">2. Bandit SAST</text>
+    <text x="400" y="150" fill="#5A564E" font-size="9.8" text-anchor="middle">Python AST</text>
+    <text x="400" y="165" fill="#5A564E" font-size="9.8" text-anchor="middle">static security</text>
+    <text x="400" y="180" fill="#5A564E" font-size="9.8" text-anchor="middle">analysis (-ll -ii)</text>
+    <text x="400" y="210" fill="#1F9D55" font-size="9.5" font-weight="700" text-anchor="middle">✓ 0 ISSUES</text>
+  </g>
+
+  <!-- Step 3: Pip-Audit -->
+  <g filter="url(#card-shadow)">
+    <rect x="478" y="102" width="124" height="128" rx="6" fill="#FFFFFF" stroke="#2A2926" stroke-width="1.5"/>
+    <text x="540" y="130" fill="#181818" font-size="11.5" font-weight="700" text-anchor="middle">3. Pip-Audit</text>
+    <text x="540" y="150" fill="#5A564E" font-size="9.8" text-anchor="middle">Google OSV</text>
+    <text x="540" y="165" fill="#5A564E" font-size="9.8" text-anchor="middle">dependency</text>
+    <text x="540" y="180" fill="#5A564E" font-size="9.8" text-anchor="middle">CVE scanner</text>
+    <text x="540" y="210" fill="#1F9D55" font-size="9.5" font-weight="700" text-anchor="middle">✓ 0 CVEs</text>
+  </g>
+
+  <!-- Arrows for Job 1 -->
+  <line x1="160" y1="150" x2="192" y2="150" stroke="#2A2926" stroke-width="1.8" marker-end="url(#arrow-dark)"/>
+  <line x1="322" y1="166" x2="332" y2="166" stroke="#2A2926" stroke-width="1.8" marker-end="url(#arrow-dark)"/>
+  <line x1="462" y1="166" x2="472" y2="166" stroke="#2A2926" stroke-width="1.8" marker-end="url(#arrow-dark)"/>
+
+  <!-- SUBGRAPH 2: JOB 2 CD -->
+  <rect x="642" y="62" width="462" height="190" rx="8" fill="#F7F4EC" stroke="#FF5722" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="656" y="84" fill="#D84315" font-size="11" font-weight="700" letter-spacing="0.8">JOB 2 // CONTINUOUS DEPLOYMENT (GOOGLE CLOUD RUN + IAP)</text>
+
+  <!-- Step 4: WIF OIDC -->
+  <g filter="url(#card-shadow)">
+    <rect x="656" y="102" width="134" height="128" rx="6" fill="#FFF7F4" stroke="#FF5722" stroke-width="1.5"/>
+    <text x="723" y="128" fill="#D84315" font-size="11" font-weight="700" text-anchor="middle">4. Keyless OIDC</text>
+    <text x="723" y="148" fill="#5A564E" font-size="9.8" text-anchor="middle">Workload Identity</text>
+    <text x="723" y="163" fill="#5A564E" font-size="9.8" text-anchor="middle">Federation +</text>
+    <text x="723" y="178" fill="#5A564E" font-size="9.8" text-anchor="middle">Artifact Registry</text>
+    <text x="723" y="210" fill="#D84315" font-size="9.5" font-weight="700" text-anchor="middle">NO JSON KEYS</text>
+  </g>
+
+  <!-- Step 5: Cloud Run + IAP -->
+  <g filter="url(#card-shadow)">
+    <rect x="806" y="102" width="138" height="128" rx="6" fill="#181818" stroke="#FF5722" stroke-width="1.5"/>
+    <text x="875" y="128" fill="#F4F1EA" font-size="11" font-weight="700" text-anchor="middle">5. Cloud Run</text>
+    <text x="875" y="148" fill="#D5D1C8" font-size="9.8" text-anchor="middle">europe-west4</text>
+    <text x="875" y="163" fill="#D5D1C8" font-size="9.8" text-anchor="middle">Internal + GCLB</text>
+    <text x="875" y="178" fill="#FFB74D" font-size="9.8" text-anchor="middle">+ Cloud IAP Gate</text>
+    <text x="875" y="210" fill="#FF5722" font-size="9.5" font-weight="700" text-anchor="middle">🔒 ZERO-TRUST</text>
+  </g>
+
+  <!-- Step 6: Smoke Test -->
+  <g filter="url(#card-shadow)">
+    <rect x="960" y="102" width="130" height="128" rx="6" fill="#FFFFFF" stroke="#1F9D55" stroke-width="1.8"/>
+    <text x="1025" y="128" fill="#181818" font-size="11" font-weight="700" text-anchor="middle">6. Smoke Test</text>
+    <text x="1025" y="148" fill="#5A564E" font-size="9.8" text-anchor="middle">Verify Cloud Run</text>
+    <text x="1025" y="163" fill="#5A564E" font-size="9.8" text-anchor="middle">GET /api/health</text>
+    <text x="1025" y="178" fill="#5A564E" font-size="9.8" text-anchor="middle">&amp; Custom Domain</text>
+    <text x="1025" y="210" fill="#1F9D55" font-size="9.5" font-weight="700" text-anchor="middle">● 200 OK LIVE</text>
+  </g>
+
+  <!-- Arrows Job 1 -> Job 2 -->
+  <line x1="602" y1="166" x2="650" y2="166" stroke="#1F9D55" stroke-width="2.2" marker-end="url(#arrow-green)"/>
+  <line x1="790" y1="166" x2="800" y2="166" stroke="#FF5722" stroke-width="1.8" marker-end="url(#arrow-orange)"/>
+  <line x1="944" y1="166" x2="954" y2="166" stroke="#FF5722" stroke-width="1.8" marker-end="url(#arrow-orange)"/>
+</svg>

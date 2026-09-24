@@ -63,24 +63,7 @@
 
 LivePulse vous permet de partager une fenêtre, un onglet de navigateur ou votre écran complet (`🖥️ PARTAGER ÉCRAN`) **à chaud pendant une conversation vocale, sans redémarrer la session Gemini Live**.
 
-```mermaid
-flowchart LR
-    subgraph Browser ["Navigateur Frontend (WebRTC + Canvas 60 FPS)"]
-        Cap["getDisplayMedia()\nFlux Vidéo d'Écran"] --> Mon["Moniteur Dédié UI1\n(MOD. B #screenMonitorCanvas)"]
-        Mouse["Clic Gauche Maintenu\n(mousedown + mousemove)"] --> Laser["Pointeur Laser Orange\n(Réticule + Halo #FF5722)"]
-        Laser --> Mon
-        Mon --> Diff["Moteur Smart Diff\n(Grille 64x36 > 1.0% @ 1 FPS)"]
-        Mic["Micro Web Audio RMS > 0.022\nou Clic Laser / Envoi Texte"] --> HD["Déclencheur Flash HD\n(JPEG 1280p @ qualité 0.88)"]
-    end
-
-    subgraph Backend ["Pont FastAPI (app.py)"]
-        Diff -->|"JPEG 1024p (si changement)"| API["POST /api/live/send\n(type: image_in)"]
-        HD -->|"JPEG 1280p HD"| API
-        API --> SDK["session.send_realtime_input(\nvideo=types.Blob(image/jpeg))"]
-    end
-
-    SDK --> Vertex["Vertex AI Gemini Live\n(3.8 Live / Extended Thinking / 3.5)"]
-```
+![Architecture Co-Vision Temps Réel & Stratégie C](./static/diagram_covision.svg)
 
 ### 1. Stratégie de Capture Hybride (`Stratégie C` : `1 FPS Smart Diff` + `Flash HD à la Voix / Laser`)
 * **Veille Visuelle Économe (`1 FPS Smart Diff`)** :
@@ -213,22 +196,7 @@ Le pipeline CI/CD défini dans [`.github/workflows/ci-cd-cloudrun.yml`](.github/
 
 ### 1. Schéma d'Exécution du Pipeline
 
-```mermaid
-flowchart LR
-    A["Push / PR sur main\nou déclenchement manuel"] --> B["Job 1 : test-and-security"]
-    subgraph CI ["Intégration Continue (Validation Qualité & Sécurité)"]
-        B --> B1["Pytest\n(Tests fonctionnels & UI)"]
-        B1 --> B2["Bandit SAST\n(Audit sécurité code Python)"]
-        B2 --> B3["Pip-Audit OSV\n(Scan CVE dépendances)"]
-    end
-    B3 -->|Succès + Branche main| C["Job 2 : deploy-cloudrun"]
-    subgraph CD ["Déploiement Continu (Google Cloud Run)"]
-        C --> C1["Auth OIDC sans clé\n(Workload Identity Federation)"]
-        C1 --> C2["Docker Build & Push\n(Artifact Registry)"]
-        C2 --> C3["Déploiement Cloud Run\n(Service Account Runtime)"]
-        C3 --> C4["Smoke Test HTTP\n(GET /api/health == ok)"]
-    end
-```
+![Pipeline CI/CD GitHub Actions & Déploiement Cloud Run](./static/diagram_cicd.svg)
 
 ### 2. Déclencheurs (`on:`)
 * **`push` sur la branche `main`** : Exécute l'intégralité du pipeline (**Job 1** puis **Job 2**).
