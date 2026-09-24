@@ -59,7 +59,7 @@
 
 ---
 
-## 🖥️ Real-Time Screen Co-Vision & Interactive Orange Laser Pointer (`Strategy C`)
+## 🖥️ Real-Time Screen Co-Vision & Interactive Orange Laser Pointer
 
 LivePulse allows you to share a window, browser tab, or full screen (`🖥️ PARTAGER ÉCRAN`) **on the fly during an active voice conversation without restarting the Gemini Live session**.
 
